@@ -1,0 +1,13 @@
+[package]
+name = "xsm"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+eframe = "0.17.0"
+
+[patch.crates-io]
+# If you fork https://github.com/emilk/egui you can test with:
+eframe = { path = "../Public/egui/eframe" }
