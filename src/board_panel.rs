@@ -5,6 +5,9 @@ use std::collections::HashMap;
 
 pub struct BoardPanel {
     pub open: bool,
+    pub open_who: bool,
+    pub open_settings: bool,
+    pub open_find: bool,
     all_boards: HashMap<String, Vec<String>>,
     favorate: Vec<String>,
 }
@@ -24,6 +27,9 @@ impl Default for BoardPanel {
             .collect();
         Self {
             open: false,
+            open_who: false,
+            open_settings: false,
+	    open_find: false,
             all_boards: map,
             favorate: catigory,
         }
@@ -32,7 +38,7 @@ impl Default for BoardPanel {
 
 impl epi::App for BoardPanel {
     fn name(&self) -> &str {
-        "锈 的版面"
+        "锈の版面"
     }
 
     fn update(&mut self, ctx: &egui::Context, frame: &epi::Frame) {
@@ -51,7 +57,7 @@ impl BoardPanel {
         //     vec2(ui.available_size_before_wrap().x, self.wrap_row_height),
         //     |ui| ui.with_layout(self.layout.layout(), demo_ui),
         // );
-        ui.heading("锈 所有版面");
+        ui.heading("锈の所有版面");
 	ui.collapsing("All Boards", |ui| self.all_boards(ui));
 	ui.collapsing("My Favorate", |ui| self.favorate_boards(ui));
         // ui.with_layout(egui::Layout::bottom_up(eframe::emath::Align::Min), |ui| {
