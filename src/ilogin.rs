@@ -51,38 +51,25 @@ impl ILoginApp {
             // ui.add(egui::Separator::default().spacing(200.0));
             ui.add_sized([200.0, 6.0], egui::Separator::default().horizontal());
             ui.end_row();
-            ui.label("Your name: ");
-            // ui.set_min_width(200.0);
+            ui.label("name: ");
             ui.text_edit_singleline(&mut self.name);
             // ui.add(egui::TextEdit::singleline(&mut self.name).desired_width(200.0));
             // ui.add_sized([200.0, 18.0], egui::TextEdit::singleline(&mut self.name).desired_width(200.0));
             ui.end_row();
-            ui.label("Your password: ");
+            ui.label("password: ");
             ui.text_edit_singleline(&mut self.passwd);
             ui.end_row();
         });
-        // ui.horizontal(|ui| {
-        //     ui.label("Your name: ");
-        //     ui.text_edit_singleline(&mut self.name);
-        // });
-
-        // ui.horizontal(|ui| {
-        //     ui.label("Your password: ");
-        //     ui.text_edit_singleline(&mut self.passwd);
-        // });
         ui.horizontal(|ui| {
             if ui.button("Sign on").clicked() {
                 self.age += 1;
             }
-            if ui.button("注册新用户").clicked() {
-                self.age -= 1;
-            }
+            ui.hyperlink_to("注册新用户", "http://www.mysmth.net/");
             // ui.label(format!("Hello '{}', age {}", self.name, self.age));
             ui.selectable_label(
                 false,
-                RichText::new("俺不说话，只瞅一瞅").color(Color32::LIGHT_BLUE),
+                RichText::new("俺不说话，只瞅一眼").color(Color32::LIGHT_BLUE),
             );
         });
-        // ui.hyperlink_to("俺不说话，只瞅一瞅", "http://www.mysmth.net/");
     }
 }
