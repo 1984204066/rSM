@@ -1,11 +1,15 @@
+use crate::ilogin::*;
+use crate::xsm::XsmAgent;
 use eframe::egui::{self, CollapsingHeader, Direction, Layout, ScrollArea};
 use eframe::epi;
-
 use std::collections::HashMap;
+use std::rc::Rc;
 #[derive(Default)]
 pub struct BoardPanel {
+    xa: Rc<XsmAgent>,
     egui_windows: PanelWindows,
     side_panel: SidePanel,
+    ilogin: ILoginApp,
 }
 
 impl epi::App for BoardPanel {
@@ -22,9 +26,18 @@ impl epi::App for BoardPanel {
                     self.side_panel.ui(ui);
                 });
         }
+        self.ilogin.update(ctx, frame);
     }
 }
 impl BoardPanel {
+    pub fn new(xsm: Rc<XsmAgent>) -> Self {
+        Self {
+            xa: xsm,
+            egui_windows: Default::default(),
+            side_panel: Default::default(),
+            ilogin: Default::default(),
+        }
+    }
     pub fn ui(&mut self, ui: &mut eframe::egui::Ui) {
         self.egui_windows.checkboxes(ui);
     }
@@ -67,7 +80,7 @@ impl SidePanel {
                 ui.selectable_value(layout, 1i8, "Favorate");
                 ui.selectable_value(layout, 2i8, "All☰");
             });
-	    ui.separator();
+            ui.separator();
             // ui.heading("锈の所有版面");
             match layout {
                 1 => self.favorate_boards(ui),

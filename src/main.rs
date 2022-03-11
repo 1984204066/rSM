@@ -1,23 +1,18 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
+pub use xsm::XsmAgent;
+pub mod xsm;
+use ilogin::ILoginApp;
+mod ilogin;
 use board_panel::BoardPanel;
+mod board_panel;
 use eframe::egui::{self, CollapsingHeader, Direction, Layout};
 use eframe::epi::{self, App};
-use ilogin::ILoginApp;
-mod board_panel;
-mod ilogin;
+use std::rc::Rc;
 
+#[derive(Default)] // Default for work offline.
 struct XsmApp {
     board_panel: BoardPanel,
-    ilogin: ILoginApp,
-}
-impl Default for XsmApp {
-    fn default() -> Self {
-        Self {
-            board_panel: Default::default(),
-            ilogin: Default::default(),
-        }
-    }
 }
 
 impl epi::App for XsmApp {
@@ -68,10 +63,9 @@ impl epi::App for XsmApp {
         egui::TopBottomPanel::bottom("bottom_panel").show(ctx, |ui| {
             self.board_panel.ui(ui);
         });
-	self.board_panel.update(ctx, frame); // include side panel
-	// frame layout finished, so we can show  other windows.
-        self.ilogin.update(ctx, frame);
-	self.board_panel.end_of_frame(ctx);
+        self.board_panel.update(ctx, frame); // include side panel
+                                             // frame layout finished, so we can show  other windows.
+        self.board_panel.end_of_frame(ctx);
 
         // Resize the native window to be just the size we need it to be:
         frame.set_window_size(ctx.used_size());
@@ -79,6 +73,11 @@ impl epi::App for XsmApp {
 }
 
 impl XsmApp {
+    fn new(xa: Rc<XsmAgent>)->Self {
+        Self {
+            board_panel: BoardPanel::new(xa),
+        }
+    }
     fn avatar_ui(&mut self, ui: &mut eframe::egui::Ui) {
         // self.own_settings_ui(ui);
         // egui::Area::new(id_source);
@@ -97,7 +96,15 @@ impl XsmApp {
 }
 
 fn main() {
+    use std::sync::mpsc::channel;
+    use std::thread;
     let app = XsmApp::default();
+    // Create a simple streaming channel
+    // let (tx, rx) = channel();
+    // let xa = Rc::new(XsmAgent::new());
+    // thread::spawn(move || loop {
+    //     let cmd = rx.recv().unwrap();
+    // });
     let options = eframe::NativeOptions {
         // Let's show off that we support transparent windows
         transparent: true,
