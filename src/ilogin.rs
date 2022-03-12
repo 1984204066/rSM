@@ -1,9 +1,9 @@
 use eframe::egui::{self, Color32, Direction, DragValue, Layout, RichText};
 use eframe::epi;
-// use egui_extras::RetainedImage;
+use egui_extras::RetainedImage;
 
 pub struct ILoginApp {
-    // image: RetainedImage,
+    image: RetainedImage,
     name: String,
     passwd: String,
     age: u32,
@@ -12,11 +12,8 @@ pub struct ILoginApp {
 impl Default for ILoginApp {
     fn default() -> Self {
         Self {
-            // image: RetainedImage::from_image_bytes(
-            //     "rust-logo-256x256.png",
-            //     include_bytes!("rust-logo-256x256.png"),
-            // )
-            // .unwrap(),
+            image: RetainedImage::from_image_bytes("smth.jpg", include_bytes!("../smth.jpg"))
+                .unwrap(),
             name: "input your name e.g. Arthur".to_owned(),
             passwd: "password".to_owned(),
             age: 42,
@@ -40,9 +37,6 @@ impl epi::App for ILoginApp {
 
 impl ILoginApp {
     fn login_ui(&mut self, ui: &mut eframe::egui::Ui) {
-        // self.image.show(ui);
-        // let widget_rect = egui::Rect::from_min_size(ui.min_rect().min, [0.0, 0.0]);
-        // ui.put(max_rect, egui::Separator::new());
         ui.horizontal(|ui| {
             // ui.heading("现锈/总锈 = 1/1");
             // ui.separator();
@@ -53,10 +47,17 @@ impl ILoginApp {
                 ui.button("🔥Top 贴");
             });
         });
+        let rect = ui.available_rect_before_wrap();
+        let widget_vec2 = ui.available_size_before_wrap();
+
+        // self.image.show_max_size(ui, widget_vec2);
+        // let widget_rect = egui::Rect::from_min_size(ui.min_rect().min, [0.0, 0.0]);
+        let grid = egui::Grid::new("User login");
+        // ui.put(rect, grid);
         // let widget_rect =
         //     egui::Rect::from_min_size(ui.min_rect().min, egui::Vec2::new(200.0, 10.0)
         //);
-        egui::Grid::new("User login").show(ui, |ui| {
+        grid.show(ui, |ui| {
             ui.separator();
             // ui.add(egui::Separator::default().spacing(200.0));
             ui.add_sized([200.0, 6.0], egui::Separator::default().horizontal());
