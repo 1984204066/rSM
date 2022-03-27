@@ -16,50 +16,7 @@ struct XsmApp {
 }
 
 impl epi::App for XsmApp {
-    fn name(&self) -> &str {
-        "锈 水木"
-    }
-
-    fn setup(
-        &mut self,
-        ctx: &egui::Context,
-        _frame: &epi::Frame,
-        _storage: Option<&dyn epi::Storage>,
-    ) {
-        #[cfg(feature = "persistence")]
-        if let Some(storage) = _storage {
-            *self = epi::get_value(storage, epi::APP_KEY).unwrap_or_default();
-        }
-
-        // Start with the default fonts (we will be adding to them rather than replacing them).
-        let mut fonts = egui::FontDefinitions::default();
-        let msyh = "msyh".to_owned();
-        // Install my own font (maybe supporting non-latin characters).
-        // .ttf and .otf files supported.
-        fonts.font_data.insert(
-            msyh.clone(),
-            egui::FontData::from_static(include_bytes!("../../.fonts/msyh.ttf")),
-        );
-
-        // Put my font first (highest priority) for proportional text:
-        fonts
-            .families
-            .entry(egui::FontFamily::Proportional)
-            .or_default()
-            .insert(0, msyh.clone());
-
-        // Put my font as last fallback for monospace:
-        fonts
-            .families
-            .entry(egui::FontFamily::Monospace)
-            .or_default()
-            .push(msyh.clone());
-
-        // Tell egui to use these fonts:
-        ctx.set_fonts(fonts);
-    }
-
-    fn update(&mut self, ctx: &egui::Context, frame: &epi::Frame) {
+    fn update(&mut self, ctx: &egui::Context, frame: &mut epi::Frame) {
         egui::TopBottomPanel::bottom("bottom_panel").show(ctx, |ui| {
             self.board_panel.ui(ui);
         });
@@ -73,7 +30,7 @@ impl epi::App for XsmApp {
 }
 
 impl XsmApp {
-    fn new(xa: Rc<XsmAgent>)->Self {
+    fn new(xa: Rc<XsmAgent>) -> Self {
         Self {
             board_panel: BoardPanel::new(xa),
         }
@@ -98,7 +55,7 @@ impl XsmApp {
 fn main() {
     use std::sync::mpsc::channel;
     use std::thread;
-    let app = XsmApp::default();
+
     // Create a simple streaming channel
     // let (tx, rx) = channel();
     // let xa = Rc::new(XsmAgent::new());
@@ -111,5 +68,42 @@ fn main() {
         drag_and_drop_support: true,
         ..Default::default()
     };
-    eframe::run_native(Box::new(app), options);
+    eframe::run_native(
+        "锈 水木",
+        options,
+        Box::new(|cc| {
+            #[cfg(feature = "persistence")]
+            if let Some(storage) = _storage {
+                *self = epi::get_value(storage, epi::APP_KEY).unwrap_or_default();
+            }
+	    let ctx = &cc.egui_ctx;
+            // Start with the default fonts (we will be adding to them rather than replacing them).
+            let mut fonts = egui::FontDefinitions::default();
+            let msyh = "msyh".to_owned();
+            // Install my own font (maybe supporting non-latin characters).
+            // .ttf and .otf files supported.
+            fonts.font_data.insert(
+                msyh.clone(),
+                egui::FontData::from_static(include_bytes!("../../.fonts/msyh.ttf")),
+            );
+
+            // Put my font first (highest priority) for proportional text:
+            fonts
+                .families
+                .entry(egui::FontFamily::Proportional)
+                .or_default()
+                .insert(0, msyh.clone());
+
+            // Put my font as last fallback for monospace:
+            fonts
+                .families
+                .entry(egui::FontFamily::Monospace)
+                .or_default()
+                .push(msyh.clone());
+
+            // Tell egui to use these fonts:
+            ctx.set_fonts(fonts);
+	    
+            Box::new(XsmApp::default())
+        }));
 }

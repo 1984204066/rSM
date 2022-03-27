@@ -22,11 +22,11 @@ impl Default for ILoginApp {
 }
 
 impl epi::App for ILoginApp {
-    fn name(&self) -> &str {
-        "锈 俺来了"
-    }
+    // fn name(&self) -> &str {
+    //     "锈 俺来了"
+    // }
 
-    fn update(&mut self, ctx: &egui::Context, frame: &epi::Frame) {
+    fn update(&mut self, ctx: &egui::Context, frame: &mut epi::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
             self.login_ui(ui);
         });

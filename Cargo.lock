@@ -711,6 +711,7 @@ dependencies = [
  "dark-light",
  "egui",
  "epi",
+ "glow",
  "instant",
  "tracing",
  "webbrowser",
@@ -723,7 +724,6 @@ version = "0.17.0"
 dependencies = [
  "egui",
  "image",
- "parking_lot 0.12.0",
 ]
 
 [[package]]
@@ -811,6 +811,7 @@ dependencies = [
  "bytemuck",
  "emath",
  "nohash-hasher",
+ "parking_lot 0.12.0",
 ]
 
 [[package]]
@@ -818,6 +819,7 @@ name = "epi"
 version = "0.17.0"
 dependencies = [
  "egui",
+ "glow",
  "tracing",
 ]
 

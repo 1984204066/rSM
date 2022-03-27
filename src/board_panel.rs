@@ -13,11 +13,11 @@ pub struct BoardPanel {
 }
 
 impl epi::App for BoardPanel {
-    fn name(&self) -> &str {
-        "锈の控"
-    }
+    // fn name(&self) -> &str {
+    //     "锈の控"
+    // }
 
-    fn update(&mut self, ctx: &egui::Context, frame: &epi::Frame) {
+    fn update(&mut self, ctx: &egui::Context, frame: &mut epi::Frame) {
         if self.egui_windows.open_board {
             egui::SidePanel::left("left_panel")
                 .min_width(110.0)
