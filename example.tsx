@@ -1,114 +1,272 @@
+// @deno-types="https://cdn.jsdelivr.net/gh/justjavac/deno_cheerio/cheerio.d.ts"
+import cheerio from "https://dev.jspm.io/cheerio/index.js";
 import puppeteer from "https://deno.land/x/puppeteer@9.0.2/mod.ts";
-import cheerio from "https://dev.jspm.io/npm:cheerio/index.js";
+import { BinarySearchTree, Board, compareBoard } from "./board.tsx";
+import { assert } from "https://deno.land/std/testing/asserts.ts";
+
+// const puppeteer = require("/usr/lib/node_modules/puppeteer");
+(async () => {
+})();
+
 const browser = await puppeteer.launch({
-  headless: false,
-  args: ["--user-data-dir=/var/run/session-smth"],
+    headless: false,
+    args: ["--user-data-dir=/var/run/session-smth"],
 });
 const page = await browser.newPage();
+// page.goto("https://www.mysmth.net/nForum/#!board/NewExpress")
+// await page.evaluateOnNewDocument(() => {
+//     const newProto = navigator.__proto__;
+//     delete newProto.webdriver;
+//     navigator.__proto__ = newProto;
+//   });
+// await page.waitForTimeout(5000);
 
 async function iLogin(user: string, passwd: string) {
-  await page.goto("https://www.mysmth.net/");
-  //const elementHandle1 = await page.$("input#id");
-  //await elementHandle1.type(user, { delay: 50 });
-  await page.type("input#id", user, { delay: 50 });
-  await page.type("input#pwd", passwd, { delay: 50 });
-  await page.click("input#b_login");
-  await page.waitForNavigation();
+    await page.goto("https://www.mysmth.net/");
+    //const elementHandle1 = await page.$("input#id");
+    //await elementHandle1.type(user, { delay: 50 });
+    try {
+        await page.type("input#id", user, { delay: 100 });
+        await page.type("input#pwd", passwd, { delay: 100 });
+        const b = page.click("input#b_login");
+        const n = page.waitForNavigation();
+        await Promise.all([b, n]);
+    } catch (err) {
+        console.log(err);
+    }
 }
 
 async function clickBecomeVisible(css1: string, css2: string) {
-  // await page.evaluate(() => {
-  //     const $anchor = document.querySelector('li.flist.folder-close span.x-folder');
-  //     $anchor.click();
-  // });
-  // await page.waitForSelector('ul#list-favor',  {visible: true})
-  try {
-    await page.click(css1, { delay: 500 });
-  } catch (err) {
-    console.log(err);
-  }
-  await page.waitForSelector(css2, { visible: true });
+    // await page.evaluate(() => {
+    //     const $anchor = document.querySelector('li.flist.folder-close span.x-folder');
+    //     $anchor.click();
+    // });
+    // await page.waitForSelector('ul#list-favor',  {visible: true})
+    try {
+        await page.click(css1, { delay: 500 });
+    } catch (err) {
+        console.log(err);
+    }
+    await page.waitForSelector(css2, { visible: true });
+}
+async function getFavorateList() {
+    await clickBecomeVisible(
+        "li.flist.folder-close span.x-folder",
+        "ul#list-favor",
+    );
+    const html = await page.$$eval(
+        "ul#list-favor.x-child li.leaf span.text a",
+        (its: any[]) =>
+            its.map((it: { href: any; title: any }) => {
+                return { href: it.href, title: it.title };
+            }),
+    );
+    // const item = await page.evaluate(() => {
+    //     const $anchor = document.querySelector('ul#list-favor.x-child li.leaf');
+    //     const array = Array.from($anchor);
+    //     return {len: array.length}
+    // });
+    // console.log("items {item}", item)
+    console.log(html);
+    return html;
+}
+
+async function page_add_board_to(url: string, btree: BinarySearchTree<Board>): Promise<Board[]> {
+    var board2 = new Array<Board>();
+    try {
+        await Promise.all([
+            page.goto(url),
+            page.waitForNavigation({ waitUntil: "load" }),
+        ]);
+        await page.waitForTimeout(1000);
+        console.log(`getBoardList goto page ${url}`);
+        const frames = page.frames();
+        console.log("frames : ", frames.length, "\n");
+        for (let f of frames) {
+            console.log("name: ", f.name(), "\n");
+            const frame = f;
+        }
+        const frame = await page.mainFrame();
+        // console.log("main frame\n", mframe)
+        // const bodyHandle = await frame.$("html");
+        // const corner = await page.click("#body.corner");
+        // const bodyHandle = await page.$("#body.corner");
+        const bodyHandle = await page.$("tbody");
+        const html = await page.evaluate((body) => body.innerHTML, bodyHandle);
+        if (bodyHandle != null) {
+            await bodyHandle.dispose(); // 销毁
+        }
+        // const html = await page.$eval('html', body => body.innerHTML)
+        // const html = await page.$('li.flist.folder-open')
+        const $ = cheerio.load(html);
+        // maybe style contains special char \8 \9.
+        $("style").empty();
+        const trs = $("tr").toArray();
+        for (var tr of trs) {
+            // const body = $(tr).text().trim();
+            // console.log("tr", body);
+            var board = new Board();
+            $("td", tr).map((i, el) => {
+                switch (i) {
+                    case 0:
+                        const cname = $("a", el).text();
+                        const href = $("a", el).attr("href");
+                        $("a", el).empty();
+                        const ename = $(el).text().trim();
+                        board.ids(ename, cname);
+                        board.url = href || "";
+                        // console.log(ename, cname, href)
+                        break;
+                    case 1:
+                        const re = /二级目录/gi;
+                        const text = $(el).text();
+                        if (text.search(re) != -1) {
+                            board.kind = 2;
+                            board2.push(board);
+                            break;
+                        }
+                        // contain butchers.
+                        const killer = $("a", el).map((i, el) => {
+                            return $(el).text();
+                        }).get();
+                        board.Butchers = killer;
+                        break;
+                    case 2:
+                        break;
+                    case 3:
+                        board.onlinesPeople = Number($(el).text());
+                        break;
+                    case 4:
+                        board.todaysPeople = Number($(el).text());
+                        break;
+                    case 5:
+                        board.topics = Number($(el).text());
+                        break;
+                    case 6:
+                        board.articles = Number($(el).text());
+                        break;
+                    default:
+                        console.log("oops");
+                }
+            });
+            console.log(board);
+            btree.insert(board);
+        }
+        // var trs: string[] = new Array();
+        // $("table.board-list.corner tbody", "tr", 'td').map((i, el) => {
+        //     console.log(i)
+        //     const tr_html = $(el).html();
+        //     trs.push(tr_html === null ? "" : tr_html);
+        // });
+        // const str = trs.join("\n");
+        // console.log(str);
+    } catch (err) {
+        console.log(err);
+    }
+    return board2;
+}
+
+async function rest_add_board(rest: Board[], btree: BinarySearchTree<Board>) {
+    if (rest.length === 0) {
+        return;
+    }
+    var rest2 = new Array<Board>();
+    console.log(rest.length);
+    for (let r of rest) {
+        const base = "https://www.mysmth.net";
+        const url = base + r.url;
+        const r2 = await page_add_board_to(url, btree);
+        console.log(r2.length);
+        rest2.concat(r2);
+        // assert(rest.length === 0);
+    }
+    rest_add_board(rest2, btree);
 }
 async function getBoardList() {
-  var SectionNames = [
-    "社区管理",
-    "国内院校",
-    "休闲娱乐",
-    "五湖四海",
-    "游戏运动",
-    "社会信息",
-    "知性感性",
-    "文化人文",
-    "学术科学",
-    "电脑技术",
-    "终止版面",
-  ];
-  var SectionURLs = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A"];
-  const baseURL = "https://www.mysmth.net/nForum/#!section/0";
-  //page.waitForResponse();
-  // const frame = await page.mainFrame()
-  // const bodyHandle = await frame.$('html');
-  // const html = await frame.evaluate(body => body.innerHTML, bodyHandle);
-  // const html = await page.$('li.flist.folder-open')
-  // await bodyHandle.dispose();      // 销毁
+    const SectionNames = [
+        "社区管理",
+        "国内院校",
+        "休闲娱乐",
+        "五湖四海",
+        "游戏运动",
+        "社会信息",
+        "知性感性",
+        "文化人文",
+        "学术科学",
+        "电脑技术",
+        "终止版面",
+    ];
+    const SectionURLs = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A"];
+    const baseURL = "https://www.mysmth.net/nForum/#!section/";
+    var btree = new BinarySearchTree<Board>(compareBoard);
 
-  // const html = await page.$eval('li.flist.folder-open', body => body.innerHTML)
-  // const $ = cheerio.load(html)
-
-  // const title = $("title").text().trim()
-  // console.log("title", title);
-  // const favor = $('ul#list-favor.x-child li.leaf span.text a').map((it) => it.href);
-  // console.log("favor:\n", favor)
+    for (var index in SectionURLs) {
+        const url = baseURL + SectionURLs[index];
+        // const html = await page.$("table.board-list.corner tbody");
+        // const $ = cheerio.load(html);
+        // const frame = await page.waitForFrame(async (frame) => {
+        // 	return frame.name() === 'pvstat';
+        // });
+        const rest = await page_add_board_to(url, btree);
+    }
+    const str = JSON.stringify(btree);
+    console.log(str);
+    // await page.waitForFunction(async () => {
+    //     const res = await fetch("https://www.mysmth.net/nForum/#!section/0");
+    //     const html = await res.text();
+    //     console.log(html);
+    // });
+    // console.log(await res.text())
+    //page.waitForResponse();
+    // const favor = $('ul#list-favor.x-child li.leaf span.text a').map((it) => it.href);
+    // console.log("favor:\n", favor)
 }
+
 // await page.goto(
 //   "https://www.mysmth.net/nForum/#!flist.json?uid=txgx&root=list-favor",
 // );
 
-// await page.setRequestInterception(true);
-// page.on("response", async (res) => {
-//   // const req = res.request();
-//   // const responseType = req.resourceType();
-//   // const headers = res.headers();
-//   // const response_url = res.url();
+await page.setRequestInterception(true);
+page.on("request", (req) => {
+    // const req = res.request();
+    // const responseType = req.resourceType();
+    // const headers = res.headers();
+    // if (req.isInterceptResolutionHandled()) return;
+    // console.log(req.url());
+    //这就是请求的类型如果是图片类型的话执行abort拦截操作 否则continue继续请求别的
+    if (req.resourceType() === "image") {
+        // console.log("----yyds-----");
+        // req.abort("failed", 0);
+        req.abort();
+    } else {
+        // console.log(await res.json());
+        // console.log(req, responseType, headers, response_url)
+        // await res.continue();
+        req.continue();
+        // req.continue(req.continueRequestOverrides(), 0);
+    }
+});
 
-//   console.log(res.status());
-//   console.log(await res.json());
-//   // console.log(req, responseType, headers, response_url)
-//   // await res.continue();
-// });
-
-async function getFavorateList() {
-  await clickBecomeVisible(
-    "li.flist.folder-close span.x-folder",
-    "ul#list-favor",
-  );
-  const html = await page.$$eval(
-    "ul#list-favor.x-child li.leaf span.text a",
-    (its) =>
-      its.map((it) => {
-        return { href: it.href, title: it.title };
-      }),
-  );
-  // const item = await page.evaluate(() => {
-  //     const $anchor = document.querySelector('ul#list-favor.x-child li.leaf');
-  //     const array = Array.from($anchor);
-  //     return {len: array.length}
-  // });
-  // console.log("items {item}", item)
-  console.log(html);
-  return html;
-}
-const user = Deno.args[0]
-const passwd = Deno.args[1]
+const user = Deno.args[0];
+const passwd = Deno.args[1];
 console.log(`Hello ${user}, I like ${passwd}!`);
 
 await iLogin(user, passwd);
 await getFavorateList();
+await getBoardList();
+// try {
+// console.log("????????");
+//     const res = await page.goto("https://www.mysmth.net/nForum/#!user/ajax_session.json");
+//     console.log(res);
+// } catch (err) {
+//     console.log("????????", err);
+// }
+await page.waitForTimeout(5000);
 
-await Promise.all([
-  page.goto("https://www.mysmth.net/nForum/#!board/CSArch"),
-  page.waitForNavigation({ waitUntil: "load" }),
-]);
+// await Promise.all([
+//     page.goto("https://www.mysmth.net/nForum/#!board/CSArch"),
+//     page.waitForNavigation({ waitUntil: "load" }),
+// ]);
 
 await page.waitForTimeout(5000);
 // const favor = await page.$('ul#list-favor');
