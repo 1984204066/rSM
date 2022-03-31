@@ -1,19 +1,43 @@
-class SomeX {
+export class Tag {
+    constructor(public tag: string = "", ...tags: string[]) {
+        this.add(tags);
+    }
+    // addTags(tags: Tag[] | string[]) {
+    //     if ((typeof tags)[0] === "string") {
+    //         this.addTag(tags.join(";"));
+    //     } else {
+    //         this.addTag((<Tag[]>tags).map((t) => t.tag).join(";"));
+    //     }
+    // }
+    add(tags:string[]) {
+        if (this.tag.length === 0) {
+            this.tag = tags.join(";");
+        } else {
+            this.tag += ";" + tags.join(";");
+        }
+	// this.addTag(tags.join(';'))
+    }
+    
+    addTags(tag: string, ...rest: string[]) {
+        if (this.tag.length === 0) {
+            this.tag = tag + ";" + rest.join(";");
+        } else {
+            this.tag += ";" + tag + ";" + rest.join(";");
+        }
+    }
+    hasTag(tag: string) {
+        return this.tag.indexOf(tag) != -1;
+    }
+}
+class SomeX extends Tag {
     xid: string;
     url: string;
-    tag: string;
     kind: number;
     constructor(id: string, u: string, k: number) {
+        super();
         this.xid = id;
         this.url = u;
-	this.tag = ""
         this.kind = k;
-    }
-    addTag(tag:string, ...rest: string[]) {
-	this.tag += (';' + tag + rest.join(';'))
-    }
-    hasTag(tag:string) {
-	return this.tag.indexOf(tag) != -1;
     }
     ids(id: string, ...restOf: string[]) {
         this.xid = id + "/" + restOf.join("/");
@@ -112,7 +136,7 @@ export function defaultCompare<T>(a: T, b: T): Compare {
 export class BinarySearchTree<T> {
     protected root?: Node<T>;
 
-    constructor(protected compareFn: ICompareFunction<T> = defaultCompare) {
+    constructor(protected comparator: ICompareFunction<T> = defaultCompare) {
         // this.root = null;
     }
     /**
@@ -123,40 +147,24 @@ export class BinarySearchTree<T> {
     }
 
     /**
-     * @description: 返回树中的最小元素
+     * @description: 返回指定子树下的最小元素,没有指定node则返回root下的最小元素
      */
-    min(): Node<T> | undefined {
-        // 调用迭代方法
-        return this.minNode(this.root);
-    }
-
-    /**
-     * @description: 返回指定子树下的最小元素
-     */
-    protected minNode(node?: Node<T>): Node<T> | undefined {
-        let current = node;
+    minNode(node?: Node<T>): Node<T> | undefined {
+        let current = node || this.root;
         // 不断向左查
-        while (current != null && current.left != null) {
+        while (current && current.left) {
             current = current.left;
         }
         return current;
     }
 
     /**
-     * @description: 返回树中的最大元素
-     */
-    max(): Node<T> | undefined {
-        // 调用迭代方法
-        return this.maxNode(this.root);
-    }
-
-    /**
      * @description: 返回指定子树下的最大元素
      */
-    protected maxNode(node?: Node<T>): Node<T> | undefined {
-        let current = node;
+    maxNode(node?: Node<T>): Node<T> | undefined {
+        let current = node || this.root;
         // 不断向右查
-        while (current != null && current.right != null) {
+        while (current && current.right) {
             current = current.right;
         }
         return current;
@@ -196,12 +204,10 @@ export class BinarySearchTree<T> {
      * @description: 后序遍历
      */
     postOrderTraverse(callback: Function) {
-        // 调用后序遍历迭代方法
         this.postOrderTraverseNode(callback, this.root);
     }
 
     private postOrderTraverseNode(callback: Function, node?: Node<T>) {
-        // 基线条件
         if (node != null) {
             // 后序遍历的执行顺序是 左 -> 右 -> 执行回调
             this.postOrderTraverseNode(callback, node.left);
@@ -209,70 +215,65 @@ export class BinarySearchTree<T> {
             callback(node.key);
         }
     }
+
     /**
      * @description: 搜索元素
      */
+    // https://ricardoborges.dev/data-structures-in-typescript-binary-search-tree
     search(key: T): Node<T> | undefined {
-        return this.searchNode(key, this.root);
-    }
-
-    /**
-     * @description: 递归搜索
-     */
-    private searchNode(key: T, node?: Node<T>): Node<T> | undefined {
-        // 基线条件：查到尽头返回false
-        if (!node) {
+        if (!this.root) {
             return undefined;
         }
-
-        if (this.compareFn(key, node.key) === Compare.LESS_THAN) {
-            // key 比 node.key 小，向左查
-            return this.searchNode(key, node.left);
-        } else if (this.compareFn(key, node.key) === Compare.BIGGER_THAN) {
-            // key 比 node.key 大，向右查
-            return this.searchNode(key, node.right);
-        } else {
-            // 基线条件：既不大也不小，说明查到该元素，返回true
-            return node;
+        let current = this.root;
+        while (this.comparator(key, current.key) !== Compare.EQUALS) {
+            if (this.comparator(key, current.key) === Compare.BIGGER_THAN) {
+                // key 比 node.key 大，向右查
+                if (!current.right) return;
+                current = current.right;
+            } else {
+                // key 比 node.key 小，向左查
+                if (!current.left) return;
+                current = current.left;
+            }
         }
+        return current;
     }
+
     /**
      * @description: 插入元素
      */
-    insert(key: T) {
-        if (this.root == null) {
-            // 边界情况：插入到根节点
+    insert(key: T): Node<T> | undefined {
+        if (!this.root) {
             this.root = new Node(key);
-        } else {
-            // 递归找到插入位置
-            this.insertNode(this.root, key);
+
+            return this.root;
+        }
+
+        let current = this.root;
+
+        while (true) {
+            if (this.comparator(key, current.key) === Compare.BIGGER_THAN) {
+                // key 比 node.key 大就向右查
+
+                if (current.right) {
+                    current = current.right;
+                } else {
+                    current.right = new Node(key);
+
+                    return current.right;
+                }
+            } else {
+                if (current.left) {
+                    current = current.left;
+                } else {
+                    current.left = new Node(key);
+
+                    return current.left;
+                }
+            }
         }
     }
 
-    /**
-     * @description: 递归插入方法
-     */
-    protected insertNode(node: Node<T>, key: T) {
-        if (this.compareFn(key, node.key) === Compare.LESS_THAN) {
-            // key 比 node.key 小就向左查
-            if (node.left == null) {
-                // 基线条件：左面为空直接赋值
-                node.left = new Node(key);
-            } else {
-                // 否则就接着递归
-                this.insertNode(node.left, key);
-            }
-        } else {
-            // key 比 node.key 大就向右查
-            if (node.right == null) {
-                // 基线条件：右面为空直接赋值
-                node.right = new Node(key);
-            } else {
-                // 否则就接着递归
-                this.insertNode(node.right, key);
-            }
-        }
-    }
     /**
      * @description: 移除指定元素
      */
@@ -286,15 +287,15 @@ export class BinarySearchTree<T> {
      */
     protected removeNode(key: T, node?: Node<T>): Node<T> | undefined {
         // 基线条件
-        if (node == null) {
+        if (!node) {
             return undefined;
         }
 
-        if (this.compareFn(key, node.key) === Compare.LESS_THAN) {
+        if (this.comparator(key, node.key) === Compare.LESS_THAN) {
             // 当 key 小于 node.key 时，向左去找
             node.left = this.removeNode(key, node.left);
             return node;
-        } else if (this.compareFn(key, node.key) === Compare.BIGGER_THAN) {
+        } else if (this.comparator(key, node.key) === Compare.BIGGER_THAN) {
             // 当 key 大于 node.key 时，向右去找
             node.right = this.removeNode(key, node.right);
             return node;

@@ -1,7 +1,7 @@
 // @deno-types="https://cdn.jsdelivr.net/gh/justjavac/deno_cheerio/cheerio.d.ts"
 import cheerio from "https://dev.jspm.io/cheerio/index.js";
 import puppeteer from "https://deno.land/x/puppeteer@9.0.2/mod.ts";
-import { BinarySearchTree, Board, compareBoard } from "./board.tsx";
+import { BinarySearchTree, Board, compareBoard, Tag } from "./board.tsx";
 import { assert } from "https://deno.land/std/testing/asserts.ts";
 
 // const puppeteer = require("/usr/lib/node_modules/puppeteer");
@@ -71,7 +71,11 @@ async function getFavorateList() {
     return html;
 }
 
-async function page_add_board_to(url: string, btree: BinarySearchTree<Board>): Promise<Board[]> {
+async function page_add_board(
+    url: string,
+    tag: string,
+    btree: BinarySearchTree<Board>,
+): Promise<Board[]> {
     var board2 = new Array<Board>();
     try {
         await Promise.all([
@@ -80,12 +84,12 @@ async function page_add_board_to(url: string, btree: BinarySearchTree<Board>): P
         ]);
         await page.waitForTimeout(1000);
         console.log(`getBoardList goto page ${url}`);
-        const frames = page.frames();
-        console.log("frames : ", frames.length, "\n");
-        for (let f of frames) {
-            console.log("name: ", f.name(), "\n");
-            const frame = f;
-        }
+        // const frames = page.frames();
+        // console.log("frames : ", frames.length, "\n");
+        // for (let f of frames) {
+        //     console.log("name: ", f.name(), "\n");
+        //     const frame = f;
+        // }
         const frame = await page.mainFrame();
         // console.log("main frame\n", mframe)
         // const bodyHandle = await frame.$("html");
@@ -106,6 +110,7 @@ async function page_add_board_to(url: string, btree: BinarySearchTree<Board>): P
             // const body = $(tr).text().trim();
             // console.log("tr", body);
             var board = new Board();
+            board.addTags(tag);
             $("td", tr).map((i, el) => {
                 switch (i) {
                     case 0:
@@ -167,20 +172,21 @@ async function page_add_board_to(url: string, btree: BinarySearchTree<Board>): P
 }
 
 async function rest_add_board(rest: Board[], btree: BinarySearchTree<Board>) {
-    if (rest.length === 0) {
-        return;
+    while (rest.length !== 0) {
+        var rest2 = new Array<Board>();
+        console.log(rest.length);
+        for (let r of rest) {
+            const t = new Tag(r.tag, r.cname());
+            const base = "https://www.mysmth.net";
+            const url = base + r.url;
+            const r2 = await page_add_board(url, t.tag, btree);
+            console.log(r2.length);
+            rest2.concat(r2);
+            // assert(rest.length === 0);
+        }
+        rest = rest2;
     }
-    var rest2 = new Array<Board>();
-    console.log(rest.length);
-    for (let r of rest) {
-        const base = "https://www.mysmth.net";
-        const url = base + r.url;
-        const r2 = await page_add_board_to(url, btree);
-        console.log(r2.length);
-        rest2.concat(r2);
-        // assert(rest.length === 0);
-    }
-    rest_add_board(rest2, btree);
+    // await rest_add_board(rest2, btree);
 }
 async function getBoardList() {
     const SectionNames = [
@@ -207,10 +213,19 @@ async function getBoardList() {
         // const frame = await page.waitForFrame(async (frame) => {
         // 	return frame.name() === 'pvstat';
         // });
-        const rest = await page_add_board_to(url, btree);
+        const tag = SectionNames[index];
+        const rest = await page_add_board(url, tag, btree);
+        await rest_add_board(rest, btree);
     }
-    const str = JSON.stringify(btree);
-    console.log(str);
+    // const str = JSON.stringify(btree);
+    var count = 0;
+    btree.preOrderTraverse((key: Board) => {
+        if (key.kind === 0) {
+            count++;
+            console.log(key.xid);
+        }
+    });
+    console.log("total :", count);
     // await page.waitForFunction(async () => {
     //     const res = await fetch("https://www.mysmth.net/nForum/#!section/0");
     //     const html = await res.text();
