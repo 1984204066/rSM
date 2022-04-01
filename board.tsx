@@ -9,20 +9,20 @@ export class Tag {
     //         this.addTag((<Tag[]>tags).map((t) => t.tag).join(";"));
     //     }
     // }
-    add(tags:string[]) {
+    add(tags: string[]) {
         if (this.tag.length === 0) {
-            this.tag = tags.join(";");
+            this.tag = tags.join(" ");
         } else {
-            this.tag += ";" + tags.join(";");
+            this.tag += " " + tags.join(" ");
         }
-	// this.addTag(tags.join(';'))
+        // this.addTag(tags.join(' '))
     }
-    
+
     addTags(tag: string, ...rest: string[]) {
         if (this.tag.length === 0) {
-            this.tag = tag + ";" + rest.join(";");
+            this.tag = tag + " " + rest.join(" ");
         } else {
-            this.tag += ";" + tag + ";" + rest.join(";");
+            this.tag += " " + tag + " " + rest.join(" ");
         }
     }
     hasTag(tag: string) {
@@ -39,25 +39,70 @@ class SomeX extends Tag {
         this.url = u;
         this.kind = k;
     }
+    Url(url?: string | null) {
+        if (url) this.url = url;
+        return this.url;
+    }
     ids(id: string, ...restOf: string[]) {
         this.xid = id + "/" + restOf.join("/");
     }
-    id1(): string {
-        const index = this.xid.indexOf("/");
-        return this.xid.substring(0, index);
+    private idn(i: number, id?: string | null): string {
+        if (id) {
+            let x = this.xid.split("/", -1);
+            x[i] = id;
+            this.xid = x.join("/");
+            return id;
+        }
+        let x = this.xid.split("/", -1);
+        return x[i];
     }
-    id2(): string {
-        const index = this.xid.indexOf("/");
-        return this.xid.substring(index + 1);
+
+    id1(id?: string | null): string {
+        return this.idn(0, id);
+    }
+    id2(id?: string | null): string {
+        return this.idn(1, id);
+    }
+}
+
+class dailyActivityInfo {
+    online_people: number;
+    todays_people: number;
+    todays_debate: number;
+    last_page: number;
+
+    constructor() {
+        this.online_people = 0;
+        this.todays_people = 0;
+        this.todays_debate = 0;
+        this.last_page = 0;
+    }
+
+    onlinesPeople(online?: number | null) {
+        if (online) this.online_people = online;
+        return this.online_people;
+    }
+    todaysPeople(todays?: number | null) {
+        if (todays) this.todays_people = todays;
+        return this.todays_people;
+    }
+    todaysAriticle(art?: number | null) {
+        if (art) this.todays_debate = art;
+        return this.todays_debate;
+    }
+    lastPage(no?: number | null) {
+        if (no) this.last_page = no;
+        return this.last_page;
     }
 }
 
 export class Board extends SomeX {
     Butchers: string[];
-    onlinesPeople: number;
-    todaysPeople: number;
-    topics: number;
-    articles: number;
+    ntopic: number;
+    ndebate: number;
+    activity: dailyActivityInfo;
+    topics: BinarySearchTree<Topic>;
+
     // constructor(xid: string, u: string, k: number);
     // constructor(
     //     xid: string,
@@ -74,25 +119,133 @@ export class Board extends SomeX {
         u: string = "",
         k: number = 0,
         killer: string[] = [],
-        onlines: number = 0,
-        todays: number = 0,
         tps: number = 0,
         arts: number = 0,
     ) {
         super(xid, u, k);
         this.Butchers = killer;
-        this.onlinesPeople = onlines;
-        this.todaysPeople = todays;
-        this.topics = tps;
-        this.articles = arts;
+        this.ntopic = tps;
+        this.ndebate = arts;
+        this.activity = new dailyActivityInfo();
+        this.topics = new BinarySearchTree<Topic>(compareTopic);
     }
+
     ename(): string {
         return this.id1();
     }
     cname(): string {
         return this.id2();
     }
+    totalTopic(num?: number | null) {
+        if (num) this.ntopic = num;
+        return this.ntopic;
+    }
+    totalDebate(num?: number | null) {
+        if (num) this.ndebate = num;
+        return this.ndebate;
+    }
 }
+
+export class Author extends SomeX {
+    static default_avatar = "face_default_m.jpg";
+    avatar_url: string;
+    score: number;
+    stellar: string;
+    publish: number;
+
+    constructor(xid: string = "", u: string = "", k: number = 0) {
+        super(xid, u, k);
+        this.avatar_url = "";
+        this.score = 0;
+        this.stellar = "";
+        this.publish = 0;
+    }
+
+    Name(nm?: string | null) {
+        return this.id1(nm);
+    }
+    nickName(nm?: string | null) {
+        return this.id2(nm);
+    }
+}
+
+export class Article extends SomeX {
+    ctime: string;
+    author: Author;
+    data: string;
+
+    constructor(xid: string = "", u: string = "", k: number = 0) {
+        super(xid, u, k);
+        this.ctime = "";
+        this.author = new Author();
+        this.data = "";
+    }
+
+    Subject(sub?: string | null): string {
+        // 当左侧操作数为 null 或 undefined 时，其返回右侧的操作数，否则返回左侧的操作数。
+        // const foo = null ?? 'default string';
+        if (sub) this.xid = sub;
+        return this.xid;
+    }
+    CTime(t?: string | null): string {
+        if (t) this.ctime = t;
+        return this.ctime;
+    }
+
+    // Author(author?:Author | null): Author {
+    // 	if (author) this.author = author
+    // 	return this.author
+    // }
+}
+
+function compareArticle(a: Article, b: Article): Compare {
+    return defaultCompare(a.ctime, b.ctime);
+}
+
+export class Topic extends Article {
+    coin: number;
+    focus: number;
+    reply: number;
+    utime: string;
+    modifier: string;
+    debates: BinarySearchTree<Article>;
+
+    constructor(xid: string = "", u: string = "", k: number = 0) {
+        super(xid, u, k);
+        this.coin = 0;
+        this.focus = 0;
+        this.reply = 0;
+        this.utime = "";
+        this.modifier = "";
+        this.debates = new BinarySearchTree<Article>(compareArticle);
+    }
+
+    Coin(coin?: number | null) {
+        if (coin) this.coin = coin;
+        return this.coin;
+    }
+    focusNum(focus?: number | null) {
+        if (focus) this.focus = focus;
+        return this.focus;
+    }
+    replyNum(reply?: number | null) {
+        if (reply) this.reply = reply;
+        return this.reply;
+    }
+    upTime(utime?: string | null) {
+        if (utime) this.utime = utime;
+        return this.utime;
+    }
+    Modifier(modifier?: string | null) {
+        if (modifier) this.modifier = modifier;
+        return this.modifier;
+    }
+}
+
+function compareTopic(a: Topic, b: Topic): Compare {
+    return defaultCompare(a.utime, b.utime);
+}
+
 export function compareBoard(a: Board, b: Board): Compare {
     return defaultCompare(a.xid, b.xid);
 }
