@@ -67,13 +67,13 @@ class SomeX extends Tag {
 
 class dailyActivityInfo {
     online_people: number;
-    todays_people: number;
+    todays_peak: number;
     todays_debate: number;
     last_page: number;
 
     constructor() {
         this.online_people = 0;
-        this.todays_people = 0;
+        this.todays_peak = 0;
         this.todays_debate = 0;
         this.last_page = 0;
     }
@@ -82,9 +82,9 @@ class dailyActivityInfo {
         if (online) this.online_people = online;
         return this.online_people;
     }
-    todaysPeople(todays?: number | null) {
-        if (todays) this.todays_people = todays;
-        return this.todays_people;
+    todaysPeak(todays?: number | null) {
+        if (todays) this.todays_peak = todays;
+        return this.todays_peak;
     }
     todaysAriticle(art?: number | null) {
         if (art) this.todays_debate = art;
@@ -168,17 +168,110 @@ export class Author extends SomeX {
         return this.id2(nm);
     }
 }
+/*
+  发信人: wxfromwh (一切为了高大上), 信区: MilitaryView
+  <br>
+  标&nbsp;&nbsp;题: Re: 伊朗的拖延战。
+  <br>
+  发信站: 水木社区 (Mon Feb 10 10:05:24 2020), 站内
+  <br>
+  &nbsp;&nbsp;
+  <br>
+  越南都打不下，伊朗更不用说
+  <br>
+  【 在 txgx 的大作中提到: 】
+  <br>
+  <font class="f006">: 美帝军事基地多而散，因此伊朗在利比亚，伊拉老，阿富汗，也门拖住美帝是对的，。 </font>
+  <br>
+  <font class="f006">: 分散力量好打。 </font>
+  <br>
+  <font class="f006">: 所以说美帝范了分兵的错误。这也和美帝犹豫不决打不打伊朗有关。 </font>
+  <br>
+  --
+  <br>
+  &nbsp;&nbsp;
+  <br>
+  <font class="f000"></font><font class="f006">※ 来源:·水木社区 <a target="_blank" href="http://m.newsmth.net">http://m.newsmth.net</a>·[FROM: 171.113.217.*]</font><font class="f000">
+  <br>
+  </font>
+*/
+export class TalkContent {
+    myword: string;
+    peer: string;
+    proverbs: string;
+    fromip: string;
+    constructor() {
+        this.myword = "";
+        this.peer = "";
+        this.proverbs = "";
+        this.fromip = "";
+    }
+    parse(data: string[]) {
+        let peer_index = -1;
+        data.every((it, i) => {
+            if (it.match(/\s+【 在.*的大作中提到: 】/g)) {
+                peer_index = i;
+                return false;
+            }
+            return true;
+        });
+	// 3 pointers, myword (peer_index) peer (last) -- proverbs (ip_index)※ ip
+        let last = -1;
+        for (let i = data.length - 1; i >= 0; i--) {
+            if (data[i].match(/^\s*--\s*$/)) {
+                last = i;
+		break
+            }
+        }
+	// we can assert last != -1.
+        if (last !== -1) {
+	    if (peer_index === -1) peer_index = last
+        }
+        let after_peer = data.slice(last + 1);
+        let ip_index = -1;
+        after_peer.every((it, i) => {
+	    // /^\s*※\s*\w+.*/
+            if (it.match(/^\s*※.*/)) {
+                ip_index = i;
+                return false;
+            }
+            return true;
+        });
+	// console.log("ip_index, after peer len", ip_index, after_peer.length)
+	
+        if (ip_index !== -1) {
+	    if (last === -1) {
+		last = ip_index
+		peer_index = ip_index
+	    }
+            this.fromip = after_peer.slice(ip_index)
+		.filter((it) => it.trim().length > 0)
+		.join("\n");
+        } else {
+	    ip_index = after_peer.length
+	}
+        this.proverbs = after_peer.slice(0, ip_index)
+	    .filter((it) => it.trim().length > 0)
+	    .join("\n",);
+        this.myword = data.slice(4, peer_index)
+	    .filter((it) => it.trim().length > 0)
+	    .join("\n",);
+        this.peer = data.slice(peer_index, last)
+	    .filter((it) => it.trim().length > 0)
+	    .join("\n");
+    }
+}
 
 export class Article extends SomeX {
     ctime: string;
     author: Author;
-    data: string;
+    content: TalkContent;
 
     constructor(xid: string = "", u: string = "", k: number = 0) {
         super(xid, u, k);
         this.ctime = "";
         this.author = new Author();
-        this.data = "";
+        this.content = new TalkContent();
     }
 
     Subject(sub?: string | null): string {

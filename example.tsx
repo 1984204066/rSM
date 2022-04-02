@@ -7,9 +7,17 @@ import { assert } from "https://deno.land/std/testing/asserts.ts";
 
 function redirectURL(url: string): string {
     const smBase = "https://www.mysmth.net";
+    let uri = url.trim();
     var re = /\/Forum\//;
-    const redirect = smBase + url.replace(re, "/Forum/#!");
-    return redirect;
+    if (uri.match(/^http[s]:/i)) {
+    } else if (uri.match(/^\/\//)) {
+        uri = "https:" + uri;
+    } else {
+        uri = smBase + uri;
+    }
+    if (uri.includes("#!")) return uri;
+    uri = uri.replace(re, "/Forum/#!");
+    return uri;
 }
 
 (async () => {
@@ -174,7 +182,7 @@ async function pageAddBoard(
                         board.activity.onlinesPeople(Number($(el).text()));
                         break;
                     case 4:
-                        board.activity.todaysPeople(Number($(el).text()));
+                        board.activity.todaysPeak(Number($(el).text()));
                         break;
                     case 5:
                         board.ntopic = Number($(el).text());
@@ -336,39 +344,39 @@ async function getTopicListFrom(url: string) {
     return topics;
 }
 
+async function smallPieceCheerio(label: string) {
+    const html = await selectHtml(label);
+    const $ = cheerio.load(html);
+    return $;
+}
+
 async function boardInfoAtSelfPage() {
     var bi = new Board();
     // 主题数:142405
     const total = await page.$eval("ul.pagination li.page-pre i", (i) => i.textContent);
     bi.totalTopic(Number(total));
+    // 分页: 12345678...4747 >>
+    const li = await smallPieceCheerio("ul.pagination li ol.page-main");
+    const last_page = li("li").last().prev().text();
+    bi.activity.lastPage(Number(last_page));
+    console.log(`${total}, pages: ${last_page}`);
 
-    {
-        const html = await selectHtml("ul.pagination li ol.page-main");
-        // 分页: 12345678...4747 >>
-        const $ = cheerio.load(html);
-        const last_page = $("li").last().prev().text();
-        bi.activity.lastPage(Number(last_page));
-        console.log(`${total}, pages: ${last_page}`);
+    // '本版当前共有162人在线[最高10608人] 今日帖数193 版面积分:91727'
+    const span = await smallPieceCheerio("div.b-head.corner");
+    const info = span("span.n-left").text();
+    var dig: number[] = [];
+    const re = /[^\d]+(\d+)[^\d]+(\d+)[^\d]+(\d+)[^\d]+(\d+)/g;
+    const m = re.exec(info);
+    if (m) {
+        // i = 0 对于 $0代表整个str, 不是number. 故此dig[0] = NaN
+        m.forEach((v, i) => dig.push(Number(v)));
+        bi.activity.onlinesPeople(dig[1]);
+        bi.activity.todaysPeak(dig[2]);
+        bi.activity.todaysAriticle(dig[3]);
+        let gross = dig[4];
     }
-    {
-        const html = await selectHtml("div.b-head.corner");
-        const $ = cheerio.load(html);
-        const info = $("span.n-left").text();
-        var dig: number[] = [];
-        // '本版当前共有162人在线[最高10608人] 今日帖数193 版面积分:91727'
-        const re = /[^\d]+(\d+)[^\d]+(\d+)[^\d]+(\d+)[^\d]+(\d+)/g;
-        const m = re.exec(info);
-        if (m) {
-            // i = 0 对于 $0代表整个str, 不是number. 故此dig[0] = NaN
-            m.forEach((v, i) => dig.push(Number(v)));
-            bi.activity.onlinesPeople(dig[1]);
-            bi.activity.todaysPeople(dig[2]);
-            bi.activity.todaysAriticle(dig[3]);
-            let gross = dig[4];
-        }
 
-        console.log(info, dig, bi);
-    }
+    console.log(info, dig, bi);
     return bi;
 }
 
@@ -377,66 +385,61 @@ async function getArticleDebates(subject: Topic) {
     return await getArticleDebatesFrom(url);
 }
 
+function oneDebate(title: string, $: cheerio.CheerioStatic, trs: cheerio.CheerioElement[]) {
+    var art = new Article();
+    let seq = 0;
+    let [tr1, tr2, tr3] = [...trs];
+    // config author
+    art.author.Name($("span.a-u-name", tr1).text());
+    const pos = $("span.a-pos", tr1).text();
+    // console.log(pos);
+    if (pos !== "楼主") {
+        const re = /第(\d+)楼/g;
+        seq = Number(pos.replace(re, "$1"));
+    } else {
+        art.Subject(title);
+    }
+    art.author.Url($("div.a-u-img img", tr2).attr("src"));
+    art.author.nickName($("div.a-u-uid", tr2).text());
+    let info = $("dl.a-u-info", tr2);
+    let key = $("dt", info).map((i, el) => $(el).text().trim());
+    let value = $("dd", info).map((i, el) => $(el).text().trim());
+    let imap = new Map();
+    for (let i in key) {
+        imap.set(key[i], value[i]);
+    }
+    let author = art.author;
+    // const x = $("dd", info).eq(0).text(); // 身份： 用户
+    author.publish = Number(imap.get("文章"));
+    author.stellar = imap.get("星座");
+    author.score = Number(imap.get("积分"));
+    author.addTags(":" + imap.get("等级"));
+    let raw_html = $("td.a-content p", tr2).html();
+    let parts = raw_html && raw_html.split("<br>", -1);
+    if (parts) {
+        let texts = parts.map((data) => cheerio.load(data).root().text());
+	art.content.parse(texts)
+    }
+    return { debate: art, no: seq };
+}
+
 async function getArticleDebatesFrom(url: string) {
     var arts = new Array<Article>();
-    let title: string = "";
     try {
         await gotoPage(url);
-        {
-            const html = await selectHtml("div.b-head.corner");
-            const $ = cheerio.load(html);
-            title = $("span.n-left").text().replace(/^文章主题:/, "");
-        }
+        let span = await smallPieceCheerio("div.b-head.corner");
+        let title = span("span.n-left").text().replace(/^文章主题:/, "").trim();
         const html = await selectHtml("div.b-content.corner");
         if (html.length === 0) return arts;
-        // console.log(html)
+
         const $ = cheerio.load(html);
         // maybe style contains special char \8 \9.
         $("style").empty();
-        // $("tbody").map((i, tbody) => {
-        // });
-        // following items are below "div.b-content.corner"
         const trs = $("tr").toArray();
         for (var j = 0; j < trs.length; j += 3) {
-            var art = new Article();
             // one article have 3 tr
-            var tr1 = trs[j];
-            var tr2 = trs[j + 1];
-            var tr3 = trs[j + 2];
-            // config author
-            art.author.Name($("span.a-u-name", tr1).text());
-            const pos = $("span.a-pos", tr1).text();
-            console.log(pos);
-            if (pos !== "楼主") {
-                const re = /第(\d+)楼/g;
-                let no = Number(pos.replace(re, "$1"));
-                console.log(pos.replace(re, "$1"), ` ${no}\n`);
-                arts[no] = art;
-            } else {
-                art.Subject(title);
-                arts[0] = art;
-            }
-            art.author.Url($("div.a-u-img img", tr2).attr("src"));
-            art.author.nickName($("div.a-u-uid", tr2).text());
-            let info = $("dl.a-u-info", tr2);
-            const x = $("dd", info).eq(0).text(); // 身份： 用户
-            art.author.publish = Number($("dd", info).eq(1).text()); // 文章： 1024
-            art.author.stellar = $("dd", info).eq(2).text(); // 星座:
-            art.author.score = Number($("dd", info).eq(3).text());
-            // art.author.kind =  $("dd", info).eq(4).text(); //等级： 花椒
-            // console.log(x)
-
-            art.data = $("td.a-content", tr2).text();
-            // console.log(art)
-            // $("td", tr).map((i, el) => {
-            //     // switch (i) {
-            //     //     case 0:
-            //     // 	break;
-            //     //     default:
-            //     // 	console.log("oops");
-            //     // }
-            //     console.log($(el).text(), "\n");
-            // });
+            let { debate, no } = oneDebate(title, $, [trs[j], trs[j + 1], trs[j + 2]]);
+            console.log(`${no}, `, debate);
         }
     } catch (err) {
         console.log(err);
@@ -476,10 +479,16 @@ await iLogin(user, passwd);
 // await gotoPage("https://www.mysmth.net/nForum/board/Picture")
 // await boardInfoAtSelfPage()
 // const topics = await getTopicListFrom("https://www.mysmth.net/nForum/board/Picture")
-let subject = await getArticleDebatesFrom(
+let debates = await getArticleDebatesFrom(
     "https://www.mysmth.net/nForum/#!article/Picture/2405892",
 );
-console.log(subject);
+if (debates.length === 0) {
+    console.log("oops try again")
+    debates = await getArticleDebatesFrom(
+	"https://www.mysmth.net/nForum/#!article/Picture/2405892",
+    );
+}
+console.log(debates);
 
 await page.waitForTimeout(8000);
 // const favor = await page.$('ul#list-favor');
