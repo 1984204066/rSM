@@ -4,6 +4,12 @@ import puppeteer from "https://deno.land/x/puppeteer@9.0.2/mod.ts";
 import { Article, BinarySearchTree, Board, compareBoard, Tag, Topic } from "./board.tsx";
 import { assert } from "https://deno.land/std/testing/asserts.ts";
 // const puppeteer = require("/usr/lib/node_modules/puppeteer");
+class xSM {
+    ilogin: {user: string, passwd: string},
+    constructor() {
+	this.ilogin = {"", ""}
+    }
+}
 
 function redirectURL(url: string): string {
     const smBase = "https://www.mysmth.net";
@@ -439,7 +445,8 @@ async function getArticleDebatesFrom(url: string) {
         for (var j = 0; j < trs.length; j += 3) {
             // one article have 3 tr
             let { debate, no } = oneDebate(title, $, [trs[j], trs[j + 1], trs[j + 2]]);
-            console.log(`${no}, `, debate);
+	    arts[no] = debate
+            // console.log(`${no}, `, debate);
         }
     } catch (err) {
         console.log(err);
@@ -472,27 +479,58 @@ const user = Deno.args[0];
 const passwd = Deno.args[1];
 console.log(`Hello ${user}, I like ${passwd}!`);
 
-await iLogin(user, passwd);
+// await iLogin(user, passwd);
 // await getFavorateList();
 // await getBoardList();
 
 // await gotoPage("https://www.mysmth.net/nForum/board/Picture")
 // await boardInfoAtSelfPage()
 // const topics = await getTopicListFrom("https://www.mysmth.net/nForum/board/Picture")
-let debates = await getArticleDebatesFrom(
-    "https://www.mysmth.net/nForum/#!article/Picture/2405892",
-);
-if (debates.length === 0) {
-    console.log("oops try again")
-    debates = await getArticleDebatesFrom(
-	"https://www.mysmth.net/nForum/#!article/Picture/2405892",
-    );
-}
-console.log(debates);
+// let debates = await getArticleDebatesFrom(
+//     "https://www.mysmth.net/nForum/#!article/Picture/2405892",
+// );
+// if (debates.length === 0) {
+//     console.log("oops try again")
+//     debates = await getArticleDebatesFrom(
+// 	"https://www.mysmth.net/nForum/#!article/Picture/2405892",
+//     );
+// }
+// console.log(debates);
+console.log("xSM agent starting receive command")
+const encoder = new TextEncoder();
+const decoder = new TextDecoder();
+// const addr : Deno.NetAddr = {transport: "udp", port: 0, hostname: "192.168.0.112"};
 
-await page.waitForTimeout(8000);
-// const favor = await page.$('ul#list-favor');
-// const str = favor.toString();
-// console.log("favor", favor);
+const socket = await Deno.listenDatagram({
+        port: 8125,
+        transport: "udp",
+        hostname: "0.0.0.0"
+       });
+for await (let [msg, client_addr] of socket) {
+    // const buf = new Uint8Array(1024);
+    let jmsg = JSON.parse(decoder.decode(msg))
+    // socket.send(buf, client_addr);
+    // await sock.read(buf);
+    console.log(jmsg)
+    // '{"cmd": "login"}'
+    // if (jmsg.cmd === 'login') {
+    // 	console.log('login')
+    // }
+    switch (jmsg.cmd) {
+	case 'login':
+	    console.log('login')
+	    break
+	case 'favorateList':
+	    break
+	case 'allBoardList':
+	    break
+	case 'browseBoard':
+	    break
+	case 'browseTopic':
+	    break
+    }
+}
+
+// await page.waitForTimeout(8000);
 
 await browser.close();

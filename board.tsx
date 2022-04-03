@@ -1,3 +1,5 @@
+import { assert } from "https://deno.land/std/testing/asserts.ts";
+
 export class Tag {
     constructor(public tag: string = "", ...tags: string[]) {
         this.add(tags);
