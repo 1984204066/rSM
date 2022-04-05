@@ -1,6 +1,7 @@
 use eframe::egui::{self, Color32, Direction, DragValue, Layout, RichText};
 use eframe::epi;
 use egui_extras::RetainedImage;
+use super::xsm::{xSMAgent, GlobalAgent};
 
 pub struct ILoginApp {
     image: RetainedImage,
@@ -40,9 +41,7 @@ impl ILoginApp {
         ui.horizontal(|ui| {
             // ui.heading("现锈/总锈 = 1/1");
             // ui.separator();
-
             // ui.heading("Welcome to 锈 水木");
-
             ui.with_layout(egui::Layout::right_to_left(), |ui| {
                 ui.button("🔥Top 贴");
             });
@@ -73,7 +72,8 @@ impl ILoginApp {
         });
         ui.horizontal(|ui| {
             if ui.button("Sign on").clicked() {
-                self.age += 1;
+		GlobalAgent::login(&self.name, &self.passwd);
+		GlobalAgent::favorate_boards();
             }
             ui.hyperlink_to("注册新用户", "http://www.mysmth.net/");
             // ui.label(format!("Hello '{}', age {}", self.name, self.age));

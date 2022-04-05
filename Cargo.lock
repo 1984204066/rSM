@@ -3200,8 +3200,12 @@ dependencies = [
  "eframe",
  "egui_extras",
  "image",
+ "lazy_static",
+ "once_cell",
  "reqwest",
  "reqwest_cookie_store",
+ "serde",
+ "serde_json",
  "tokio",
 ]
 

@@ -1,6 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
-pub use xsm::XsmAgent;
+pub use xsm::{xSMAgent, GlobalAgent};
 pub mod xsm;
 use ilogin::ILoginApp;
 mod ilogin;
@@ -9,6 +9,12 @@ mod board_panel;
 use eframe::egui::{self, CollapsingHeader, Direction, Layout};
 use eframe::epi::{self, App};
 use std::rc::Rc;
+use std::sync::Mutex;
+// #[macro_use]
+// extern crate lazy_static;
+// lazy_static! {
+//     static ref XSM:Mutex<PuppeteerAgent> = Mutex::new(PuppeteerAgent::default());
+// }
 
 #[derive(Default)] // Default for work offline.
 struct XsmApp {
@@ -30,11 +36,12 @@ impl epi::App for XsmApp {
 }
 
 impl XsmApp {
-    fn new(xa: Rc<XsmAgent>) -> Self {
-        Self {
-            board_panel: BoardPanel::new(xa),
-        }
-    }
+    // fn new(xa: Rc<dyn xSMAgent>) -> Self {
+    //     Self {
+    //         board_panel: BoardPanel::new(xa),
+    //     }
+    // }
+    
     fn avatar_ui(&mut self, ui: &mut eframe::egui::Ui) {
         // self.own_settings_ui(ui);
         // egui::Area::new(id_source);
@@ -54,14 +61,12 @@ impl XsmApp {
 
 fn main() {
     use std::sync::mpsc::channel;
-    use std::thread;
 
     // Create a simple streaming channel
     // let (tx, rx) = channel();
-    // let xa = Rc::new(XsmAgent::new());
-    // thread::spawn(move || loop {
-    //     let cmd = rx.recv().unwrap();
-    // });
+    // let mut xa = get_xsm_agent();
+    // xa.start();
+
     let options = eframe::NativeOptions {
         // Let's show off that we support transparent windows
         transparent: true,
@@ -103,7 +108,9 @@ fn main() {
 
             // Tell egui to use these fonts:
             ctx.set_fonts(fonts);
-	    
+
+	    GlobalAgent::start();
+	    // GlobalAgent::favorate_boards();
             Box::new(XsmApp::default())
         }));
 }

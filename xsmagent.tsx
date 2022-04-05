@@ -4,12 +4,12 @@ import puppeteer from "https://deno.land/x/puppeteer@9.0.2/mod.ts";
 import { Article, BinarySearchTree, Board, compareBoard, Tag, Topic } from "./board.tsx";
 import { assert } from "https://deno.land/std/testing/asserts.ts";
 // const puppeteer = require("/usr/lib/node_modules/puppeteer");
-class xSM {
-    ilogin: {user: string, passwd: string},
-    constructor() {
-	this.ilogin = {"", ""}
-    }
-}
+// class xSM {
+//     ilogin: {user: string, passwd: string},
+//     constructor() {
+// 	this.ilogin = {"", ""}
+//     }
+// }
 
 function redirectURL(url: string): string {
     const smBase = "https://www.mysmth.net";
@@ -87,8 +87,8 @@ async function getFavorateList() {
     );
     const html = await page.$$eval(
         "ul#list-favor.x-child li.leaf span.text a",
-        (its: any[]) =>
-            its.map((it: { href: any; title: any }) => {
+        (its) =>
+            its.map((it) => {
                 return { href: it.href, title: it.title };
             }),
     );
@@ -99,8 +99,13 @@ async function getFavorateList() {
     // });
     // const html = await page.$('li.flist.folder-open')
     // console.log("items {item}", item)
-    console.log(html);
-    return html;
+    // const favors = Array.from(html)
+    // console.log(favors);
+    // console.log(html);
+    let a = html as unknown as [{ href: string, title: string }]
+    console.log(a)
+    console.log(a.length)
+    return a;
 }
 
 async function getTBodyHtml() {
@@ -475,13 +480,12 @@ page.on("request", (req) => {
     }
 });
 
-const user = Deno.args[0];
-const passwd = Deno.args[1];
-console.log(`Hello ${user}, I like ${passwd}!`);
+// const user = Deno.args[0];
+// const passwd = Deno.args[1];
+// console.log(`Hello ${user}, I like ${passwd}!`);
 
 // await iLogin(user, passwd);
 // await getFavorateList();
-// await getBoardList();
 
 // await gotoPage("https://www.mysmth.net/nForum/board/Picture")
 // await boardInfoAtSelfPage()
@@ -496,41 +500,87 @@ console.log(`Hello ${user}, I like ${passwd}!`);
 //     );
 // }
 // console.log(debates);
-console.log("xSM agent starting receive command")
-const encoder = new TextEncoder();
-const decoder = new TextDecoder();
 // const addr : Deno.NetAddr = {transport: "udp", port: 0, hostname: "192.168.0.112"};
 
 const socket = await Deno.listenDatagram({
-        port: 8125,
-        transport: "udp",
-        hostname: "0.0.0.0"
-       });
+    port: 8125,
+    transport: "udp",
+    hostname: "0.0.0.0"
+});
+console.log("xSM agent starting receive command")
+const encoder = new TextEncoder();
+const decoder = new TextDecoder();
+let quit = 0;
+
 for await (let [msg, client_addr] of socket) {
-    // const buf = new Uint8Array(1024);
-    let jmsg = JSON.parse(decoder.decode(msg))
-    // socket.send(buf, client_addr);
-    // await sock.read(buf);
-    console.log(jmsg)
-    // '{"cmd": "login"}'
-    // if (jmsg.cmd === 'login') {
-    // 	console.log('login')
-    // }
-    switch (jmsg.cmd) {
-	case 'login':
-	    console.log('login')
-	    break
-	case 'favorateList':
-	    break
-	case 'allBoardList':
-	    break
-	case 'browseBoard':
-	    break
-	case 'browseTopic':
-	    break
+    if (quit) break
+    let send_data =async (data: Uint8Array, dest: Deno.Addr) => {
+	const len = data.length
+	var left = len
+	var end = 0
+	var index = 0;
+	do {	    
+	    if (left > 1000) {
+		left -= 1000
+		end += 1000
+	    } else {
+		left = 0
+		end = len
+	    }
+	    await socket.send(data.slice(index, end), dest);
+	    index = end
+	} while (left > 0)
+    }
+
+    try {
+	let jmsg = JSON.parse(decoder.decode(msg))
+	// socket.send(buf, client_addr);
+	// await sock.read(buf);
+	console.log(jmsg)
+	// '{"cmd": "login"}'
+	// if (jmsg.cmd === 'login') {
+	// 	console.log('login')
+	// }
+	switch (jmsg.cmd) {
+	    case 'login':
+		const user : string = jmsg.user
+		const passwd : string = jmsg.passwd
+		await iLogin(user, passwd)
+		break
+	    case 'favorateList':
+		let favors = await getFavorateList();
+		if (favors.length > 0) {
+		    const str = encoder.encode(JSON.stringify(favors));
+		    const len = str.length;
+		    const len_json = JSON.stringify(len)
+		    console.log("len's json", len_json)
+		    await socket.send(encoder.encode(len_json) , client_addr);
+		    // var s :string = client_addr
+		    // console.log(str)
+		    await send_data(str, client_addr)
+		    // await socket.send(str.slice(0,1000), client_addr);
+		    // await socket.send(str.slice(1000), client_addr);
+		} else {
+		    const len = 0
+		    const len_json = JSON.stringify(len)
+		    await socket.send(encoder.encode(len_json) , client_addr);
+		}
+		break
+	    case 'allBoardList':
+		await getBoardList();
+		break
+	    case 'browseBoard':
+		break
+	    case 'browseTopic':
+		break
+	    case 'quit':
+		// await page.waitForTimeout(8000);
+		await browser.close();
+		socket.send(encoder.encode("OK"), client_addr);
+		quit = 1
+	}
+    } catch(err) {
+	console.log("some err occur", err)
     }
 }
 
-// await page.waitForTimeout(8000);
-
-await browser.close();

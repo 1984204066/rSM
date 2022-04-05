@@ -1,12 +1,14 @@
 use crate::ilogin::*;
-use crate::xsm::XsmAgent;
+use crate::xsm::{xSMAgent};
 use eframe::egui::{self, CollapsingHeader, Direction, Layout, ScrollArea};
 use eframe::epi;
 use std::collections::HashMap;
 use std::rc::Rc;
-#[derive(Default)]
+// static mut GLOBAL_XSM : Box<mut dyn xSMAgent> = get_xsm_agent();
+
+// #[derive(Default)]
 pub struct BoardPanel {
-    xa: Rc<XsmAgent>,
+    // pub xa: Box<dyn xSMAgent>,
     egui_windows: PanelWindows,
     side_panel: SidePanel,
     ilogin: ILoginApp,
@@ -29,15 +31,25 @@ impl epi::App for BoardPanel {
         self.ilogin.update(ctx, frame);
     }
 }
-impl BoardPanel {
-    pub fn new(xsm: Rc<XsmAgent>) -> Self {
+impl Default for BoardPanel {
+    fn default() -> Self {
         Self {
-            xa: xsm,
-            egui_windows: Default::default(),
-            side_panel: Default::default(),
-            ilogin: Default::default(),
+            // xa: get_xsm_agent(),
+            egui_windows: PanelWindows::default(),
+            side_panel: SidePanel::default(),
+            ilogin: ILoginApp::default(),
         }
     }
+}
+impl BoardPanel {
+    // pub fn new(xsm: Rc<dyn xSMAgent>) -> Self {
+    //     Self {
+    //         // xa: xsm,
+    //         egui_windows: Default::default(),
+    //         side_panel: Default::default(),
+    //         ilogin: Default::default(),
+    //     }
+    // }
     pub fn ui(&mut self, ui: &mut eframe::egui::Ui) {
         self.egui_windows.checkboxes(ui);
     }
