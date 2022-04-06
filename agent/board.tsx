@@ -217,50 +217,50 @@ export class TalkContent {
             }
             return true;
         });
-	// 3 pointers, myword (peer_index) peer (last) -- proverbs (ip_index)※ ip
+        // 3 pointers, myword (peer_index) peer (last) -- proverbs (ip_index)※ ip
         let last = -1;
         for (let i = data.length - 1; i >= 0; i--) {
             if (data[i].match(/^\s*--\s*$/)) {
                 last = i;
-		break
+                break;
             }
         }
-	// we can assert last != -1.
+        // we can assert last != -1.
         if (last !== -1) {
-	    if (peer_index === -1) peer_index = last
+            if (peer_index === -1) peer_index = last;
         }
         let after_peer = data.slice(last + 1);
         let ip_index = -1;
         after_peer.every((it, i) => {
-	    // /^\s*※\s*\w+.*/
+            // /^\s*※\s*\w+.*/
             if (it.match(/^\s*※.*/)) {
                 ip_index = i;
                 return false;
             }
             return true;
         });
-	// console.log("ip_index, after peer len", ip_index, after_peer.length)
-	
+        // console.log("ip_index, after peer len", ip_index, after_peer.length)
+
         if (ip_index !== -1) {
-	    if (last === -1) {
-		last = ip_index
-		peer_index = ip_index
-	    }
+            if (last === -1) {
+                last = ip_index;
+                peer_index = ip_index;
+            }
             this.fromip = after_peer.slice(ip_index)
-		.filter((it) => it.trim().length > 0)
-		.join("\n");
+                .filter((it) => it.trim().length > 0)
+                .join("\n");
         } else {
-	    ip_index = after_peer.length
-	}
+            ip_index = after_peer.length;
+        }
         this.proverbs = after_peer.slice(0, ip_index)
-	    .filter((it) => it.trim().length > 0)
-	    .join("\n",);
+            .filter((it) => it.trim().length > 0)
+            .join("\n");
         this.myword = data.slice(4, peer_index)
-	    .filter((it) => it.trim().length > 0)
-	    .join("\n",);
+            .filter((it) => it.trim().length > 0)
+            .join("\n");
         this.peer = data.slice(peer_index, last)
-	    .filter((it) => it.trim().length > 0)
-	    .join("\n");
+            .filter((it) => it.trim().length > 0)
+            .join("\n");
     }
 }
 
