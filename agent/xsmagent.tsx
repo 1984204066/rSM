@@ -2,7 +2,9 @@
 import cheerio from "https://dev.jspm.io/cheerio/index.js";
 import puppeteer from "https://deno.land/x/puppeteer@9.0.2/mod.ts";
 import { Article, BinarySearchTree, Board, compareBoard, Tag, Topic } from "./board.tsx";
-import { assert } from "https://deno.land/std/testing/asserts.ts";
+import {initBoardTbl} from "./db.tsx"
+
+// import { assert } from "https://deno.land/std/testing/asserts.ts";
 // const puppeteer = require("/usr/lib/node_modules/puppeteer");
 // class xSM {
 //     ilogin: {user: string, passwd: string},
@@ -185,7 +187,7 @@ async function pageAddBoard(
                         const killer = $("a", el).map((i, el) => {
                             return $(el).text();
                         }).get();
-                        board.Butchers = killer;
+                        board.butchers = killer;
                         break;
                     case 2:
                         break;
@@ -269,15 +271,7 @@ async function getBoardList() {
         const rest = await pageAddBoard(url, tag, btree);
         await restAddBoard(rest, btree);
     }
-    // const str = JSON.stringify(btree);
-    var count = 0;
-    btree.preOrderTraverse((key: Board) => {
-        if (key.kind === 0) {
-            count++;
-            console.log(key.xid);
-        }
-    });
-    console.log("total :", count);
+    return btree;
     // await page.waitForFunction(async () => {
     //     const res = await fetch("https://www.mysmth.net/nForum/#!section/0");
     //     const html = await res.text();
@@ -507,12 +501,13 @@ const socket = await Deno.listenDatagram({
     transport: "udp",
     hostname: "0.0.0.0"
 });
-console.log("xSM agent starting receive command")
-const encoder = new TextEncoder();
-const decoder = new TextDecoder();
-let quit = 0;
 
+console.log("xSM agent starting receive command")
 for await (let [msg, client_addr] of socket) {
+    const encoder = new TextEncoder();
+    const decoder = new TextDecoder();
+    let quit = 0;
+
     if (quit) break
     let send_data =async (data: Uint8Array, dest: Deno.Addr) => {
 	const len = data.length
@@ -567,7 +562,19 @@ for await (let [msg, client_addr] of socket) {
 		}
 		break
 	    case 'allBoardList':
-		await getBoardList();
+		let btree = await getBoardList();
+		// const str = JSON.stringify(btree);
+		var count = 0;
+		let board_array = new Arrayy<Board>
+		btree.preOrderTraverse((data: Board) => {
+		    if (data.kind === 0) {
+			count++;
+	                // console.log(data.xid);
+		    }
+		    board_array.push(data)
+		});
+		console.log("total :", count);
+		await initBoardTbl(board_array);
 		break
 	    case 'browseBoard':
 		break

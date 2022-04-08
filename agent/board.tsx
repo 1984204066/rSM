@@ -99,7 +99,7 @@ class dailyActivityInfo {
 }
 
 export class Board extends SomeX {
-    Butchers: string[];
+    butchers: string[];
     ntopic: number;
     ndebate: number;
     activity: dailyActivityInfo;
@@ -125,7 +125,7 @@ export class Board extends SomeX {
         arts: number = 0,
     ) {
         super(xid, u, k);
-        this.Butchers = killer;
+        this.butchers = killer;
         this.ntopic = tps;
         this.ndebate = arts;
         this.activity = new dailyActivityInfo();
@@ -346,17 +346,17 @@ export function compareBoard(a: Board, b: Board): Compare {
 }
 // export default Board
 // https://zhuanlan.zhihu.com/p/367762840
-export class Node<K> {
-    left?: Node<K>;
-    right?: Node<K>;
+export class Node<T> {
+    left?: Node<T>;
+    right?: Node<T>;
 
-    constructor(public key: K) {
+    constructor(public data: T) {
         // this.left = null;
         // this.right = null;
     }
 
     toString() {
-        return `${this.key}`;
+        return `${this.data}`;
     }
 }
 // 比较结果的枚举值
@@ -429,7 +429,7 @@ export class BinarySearchTree<T> {
         // 基线条件
         if (!node) return;
         // 先序遍历的执行顺序是 执行回调 -> 左 -> 右
-        callback(node.key);
+        callback(node.data);
         this.preOrderTraverseNode(callback, node.left);
         this.preOrderTraverseNode(callback, node.right);
     }
@@ -445,7 +445,7 @@ export class BinarySearchTree<T> {
         if (!node) return;
         // 中序遍历的顺序是 左 -> 执行回调 -> 右
         this.inOrderTraverseNode(callback, node.left);
-        callback(node.key);
+        callback(node.data);
         this.inOrderTraverseNode(callback, node.right);
     }
     /**
@@ -460,7 +460,7 @@ export class BinarySearchTree<T> {
             // 后序遍历的执行顺序是 左 -> 右 -> 执行回调
             this.postOrderTraverseNode(callback, node.left);
             this.postOrderTraverseNode(callback, node.right);
-            callback(node.key);
+            callback(node.data);
         }
     }
 
@@ -468,18 +468,18 @@ export class BinarySearchTree<T> {
      * @description: 搜索元素
      */
     // https://ricardoborges.dev/data-structures-in-typescript-binary-search-tree
-    search(key: T): Node<T> | undefined {
+    search(data: T): Node<T> | undefined {
         if (!this.root) {
             return undefined;
         }
         let current = this.root;
-        while (this.comparator(key, current.key) !== Compare.EQUALS) {
-            if (this.comparator(key, current.key) === Compare.BIGGER_THAN) {
-                // key 比 node.key 大，向右查
+        while (this.comparator(data, current.data) !== Compare.EQUALS) {
+            if (this.comparator(data, current.data) === Compare.BIGGER_THAN) {
+                // data 比 node.data 大，向右查
                 if (!current.right) return;
                 current = current.right;
             } else {
-                // key 比 node.key 小，向左查
+                // data 比 node.data 小，向左查
                 if (!current.left) return;
                 current = current.left;
             }
@@ -490,9 +490,9 @@ export class BinarySearchTree<T> {
     /**
      * @description: 插入元素
      */
-    insert(key: T): Node<T> | undefined {
+    insert(data: T): Node<T> | undefined {
         if (!this.root) {
-            this.root = new Node(key);
+            this.root = new Node(data);
 
             return this.root;
         }
@@ -500,13 +500,13 @@ export class BinarySearchTree<T> {
         let current = this.root;
 
         while (true) {
-            if (this.comparator(key, current.key) === Compare.BIGGER_THAN) {
-                // key 比 node.key 大就向右查
+            if (this.comparator(data, current.data) === Compare.BIGGER_THAN) {
+                // data 比 node.data 大就向右查
 
                 if (current.right) {
                     current = current.right;
                 } else {
-                    current.right = new Node(key);
+                    current.right = new Node(data);
 
                     return current.right;
                 }
@@ -514,7 +514,7 @@ export class BinarySearchTree<T> {
                 if (current.left) {
                     current = current.left;
                 } else {
-                    current.left = new Node(key);
+                    current.left = new Node(data);
 
                     return current.left;
                 }
@@ -525,27 +525,27 @@ export class BinarySearchTree<T> {
     /**
      * @description: 移除指定元素
      */
-    remove(key: T) {
+    remove(data: T) {
         // 调用递归方法，这里的递归很特殊，会将删除后的树返回
-        this.root = this.removeNode(key, this.root);
+        this.root = this.removeNode(data, this.root);
     }
 
     /**
      * @description: 递归方法，在指定子树中移除指定元素，每次处理完后都需要将处理后的节点返回给本节点
      */
-    protected removeNode(key: T, node?: Node<T>): Node<T> | undefined {
+    protected removeNode(data: T, node?: Node<T>): Node<T> | undefined {
         // 基线条件
         if (!node) {
             return undefined;
         }
 
-        if (this.comparator(key, node.key) === Compare.LESS_THAN) {
-            // 当 key 小于 node.key 时，向左去找
-            node.left = this.removeNode(key, node.left);
+        if (this.comparator(data, node.data) === Compare.LESS_THAN) {
+            // 当 data 小于 node.data 时，向左去找
+            node.left = this.removeNode(data, node.left);
             return node;
-        } else if (this.comparator(key, node.key) === Compare.BIGGER_THAN) {
-            // 当 key 大于 node.key 时，向右去找
-            node.right = this.removeNode(key, node.right);
+        } else if (this.comparator(data, node.data) === Compare.BIGGER_THAN) {
+            // 当 data 大于 node.data 时，向右去找
+            node.right = this.removeNode(data, node.right);
             return node;
         } else {
             // 此时已经查到了要删除的节点
@@ -564,8 +564,8 @@ export class BinarySearchTree<T> {
                 // 当要删除的节点有两个子节点
                 const aux = this.minNode(node.right);
                 if (aux != undefined) {
-                    node.key = aux.key;
-                    node.right = this.removeNode(aux.key, node.right);
+                    node.data = aux.data;
+                    node.right = this.removeNode(aux.data, node.right);
                 }
                 return node;
             }
