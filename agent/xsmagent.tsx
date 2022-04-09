@@ -1,11 +1,12 @@
 // @deno-types="https://cdn.jsdelivr.net/gh/justjavac/deno_cheerio/cheerio.d.ts"
 import cheerio from "https://dev.jspm.io/cheerio/index.js";
 import puppeteer from "https://deno.land/x/puppeteer@9.0.2/mod.ts";
-import { Article, BinarySearchTree, Board, compareBoard, Tag, Topic } from "./board.tsx";
-import {initBoardTbl} from "./db.tsx"
-
-// import { assert } from "https://deno.land/std/testing/asserts.ts";
+import {Article, BinarySearchTree, Board, compareBoard, Tag, Topic } from "./board.tsx";
+// import {initBoardTbl} from "./db.tsx"
 // const puppeteer = require("/usr/lib/node_modules/puppeteer");
+// const cheerio = require("/usr/lib/node_modules/cheerio");
+// const Board = require("./board.tsx");
+
 // class xSM {
 //     ilogin: {user: string, passwd: string},
 //     constructor() {
@@ -509,8 +510,11 @@ for await (let [msg, client_addr] of socket) {
     let quit = 0;
 
     if (quit) break
-    let send_data =async (data: Uint8Array, dest: Deno.Addr) => {
+    let send_data =async (adata: any, dest: Deno.Addr|null) => {
+	let data: Uint8Array = encoder.encode(JSON.stringify(adata)) // 
 	const len = data.length
+	console.log("obj json's len: ", len)
+	if (!dest) return len
 	var left = len
 	var end = 0
 	var index = 0;
@@ -545,27 +549,19 @@ for await (let [msg, client_addr] of socket) {
 	    case 'favorateList':
 		let favors = await getFavorateList();
 		if (favors.length > 0) {
-		    const str = encoder.encode(JSON.stringify(favors));
-		    const len = str.length;
-		    const len_json = JSON.stringify(len)
-		    console.log("len's json", len_json)
-		    await socket.send(encoder.encode(len_json) , client_addr);
-		    // var s :string = client_addr
-		    // console.log(str)
-		    await send_data(str, client_addr)
-		    // await socket.send(str.slice(0,1000), client_addr);
-		    // await socket.send(str.slice(1000), client_addr);
+		    const len = await send_data(favors, null)
+		    await send_data(len, client_addr)
+		    await send_data(favors, client_addr)
 		} else {
 		    const len = 0
-		    const len_json = JSON.stringify(len)
-		    await socket.send(encoder.encode(len_json) , client_addr);
+		    await send_data(len, client_addr)
 		}
 		break
 	    case 'allBoardList':
 		let btree = await getBoardList();
 		// const str = JSON.stringify(btree);
 		var count = 0;
-		let board_array = new Arrayy<Board>
+		let board_array = new Array<Board>()
 		btree.preOrderTraverse((data: Board) => {
 		    if (data.kind === 0) {
 			count++;
@@ -574,7 +570,7 @@ for await (let [msg, client_addr] of socket) {
 		    board_array.push(data)
 		});
 		console.log("total :", count);
-		await initBoardTbl(board_array);
+		// await initBoardTbl(board_array);
 		break
 	    case 'browseBoard':
 		break
