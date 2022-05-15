@@ -1,7 +1,6 @@
 use crate::ilogin::*;
 use crate::xsm::{xSMAgent};
 use eframe::egui::{self, CollapsingHeader, Direction, Layout, ScrollArea};
-use eframe::epi;
 use std::collections::HashMap;
 use std::rc::Rc;
 // static mut GLOBAL_XSM : Box<mut dyn xSMAgent> = get_xsm_agent();
@@ -14,12 +13,12 @@ pub struct BoardPanel {
     ilogin: ILoginApp,
 }
 
-impl epi::App for BoardPanel {
+impl eframe::App for BoardPanel {
     // fn name(&self) -> &str {
     //     "锈の控"
     // }
 
-    fn update(&mut self, ctx: &egui::Context, frame: &mut epi::Frame) {
+    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
         if self.egui_windows.open_board {
             egui::SidePanel::left("left_panel")
                 .min_width(110.0)

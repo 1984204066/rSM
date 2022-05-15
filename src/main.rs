@@ -7,7 +7,6 @@ mod ilogin;
 use board_panel::BoardPanel;
 mod board_panel;
 use eframe::egui::{self, CollapsingHeader, Direction, Layout};
-use eframe::epi::{self, App};
 use std::rc::Rc;
 use std::sync::Mutex;
 // #[macro_use]
@@ -21,8 +20,8 @@ struct XsmApp {
     board_panel: BoardPanel,
 }
 
-impl epi::App for XsmApp {
-    fn update(&mut self, ctx: &egui::Context, frame: &mut epi::Frame) {
+impl eframe::App for XsmApp {
+    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
         egui::TopBottomPanel::bottom("bottom_panel").show(ctx, |ui| {
             self.board_panel.ui(ui);
         });
@@ -79,7 +78,7 @@ fn main() {
         Box::new(|cc| {
             #[cfg(feature = "persistence")]
             if let Some(storage) = _storage {
-                *self = epi::get_value(storage, epi::APP_KEY).unwrap_or_default();
+                *self = eframe::get_value(storage, eframe::APP_KEY).unwrap_or_default();
             }
 	    let ctx = &cc.egui_ctx;
             // Start with the default fonts (we will be adding to them rather than replacing them).

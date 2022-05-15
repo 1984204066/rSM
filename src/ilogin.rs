@@ -1,5 +1,4 @@
 use eframe::egui::{self, Color32, Direction, DragValue, Layout, RichText};
-use eframe::epi;
 use egui_extras::RetainedImage;
 use super::xsm::{xSMAgent, GlobalAgent};
 
@@ -22,12 +21,12 @@ impl Default for ILoginApp {
     }
 }
 
-impl epi::App for ILoginApp {
+impl eframe::App for ILoginApp {
     // fn name(&self) -> &str {
     //     "锈 俺来了"
     // }
 
-    fn update(&mut self, ctx: &egui::Context, frame: &mut epi::Frame) {
+    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
             self.login_ui(ui);
         });

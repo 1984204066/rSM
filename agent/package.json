@@ -1,0 +1,23 @@
+{
+  "name": "smagent",
+  "version": "0.0.1",
+  "description": "agent to www.mysmth.net",
+  "main": "lib/xsmagent.js",
+  "type": "module",
+  "dependencies": {
+    "puppeteer": "^14.1.0"
+  },
+  "scripts": {
+      "test": "echo \"Error: no test specified\" && exit 1",
+      "tsc": "tsc -p tsconfig.json"
+  },
+  "keywords": [
+    "smth",
+    "agent"
+  ],
+  "author": "1984204066",
+  "license": "GPL-3.0",
+  "devDependencies": {
+    "typescript": "^4.6.4"
+  }
+}

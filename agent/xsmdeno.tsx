@@ -2,7 +2,7 @@
 import cheerio from "https://dev.jspm.io/cheerio/index.js";
 import puppeteer from "https://deno.land/x/puppeteer@9.0.2/mod.ts";
 import {Article, BinarySearchTree, Board, compareBoard, Tag, Topic } from "./board.tsx";
-// import {initBoardTbl} from "./db.tsx"
+//import {initBoardTbl} from "./db.tsx"
 // const puppeteer = require("/usr/lib/node_modules/puppeteer");
 // const cheerio = require("/usr/lib/node_modules/cheerio");
 // const Board = require("./board.tsx");
@@ -51,6 +51,9 @@ async function gotoPage(url: string) {
         page.waitForNavigation({ waitUntil: "networkidle2" }),
         // page.waitForNavigation({ waitUntil: "load" }),
     ]);
+    await page.mainFrame();
+    // console.log("main frame\n", mframe)
+    await page.waitForSelector('section#main.corner',  {visible: true})
     console.log(`hi~~, I'm going to page ${url}`);
 }
 
@@ -88,7 +91,7 @@ async function getFavorateList() {
         "li.flist.folder-close span.x-folder",
         "ul#list-favor",
     );
-    const html = await page.$$eval(
+    const favors = await page.$$eval(
         "ul#list-favor.x-child li.leaf span.text a",
         (its) =>
             its.map((it) => {
@@ -105,29 +108,42 @@ async function getFavorateList() {
     // const favors = Array.from(html)
     // console.log(favors);
     // console.log(html);
-    let a = html as unknown as [{ href: string, title: string }]
-    console.log(a)
-    console.log(a.length)
+    let a = favors as unknown as [{ href: string, title: string }]
+    // console.log(a)
+    console.log("favorate list len=", a.length)
     return a;
 }
 
-async function getTBodyHtml() {
-    return await selectHtml("tbody");
+async function getTBodyHtml(url:string) {
+    let retry = 2;
+    do {
+	try {
+	    await gotoPage(url);
+	    const html = await selectHtml("tbody");
+            if (html.length !== 0) {
+		return html;
+            }
+	    console.log("let us retry ", url)
+	    retry --
+	} catch (err) {
+            console.log(err);
+	    retry --;
+	}
+    } while (retry > 0)
+    return ""
 }
 
 async function selectHtml(css: string) {
     try {
-        const frame = await page.mainFrame();
-        // console.log("main frame\n", mframe)
         // const bodyHandle = await frame.$("html");
         // const corner = await page.click("#body.corner");
         // const bodyHandle = await page.$("#body.corner");
-        // const html = await page.$eval('html', body => body.innerHTML)
+        // const html = await page.$eval('html', body => body.innerHTML)	
         const bodyHandle = await page.$(css);
         const html = await page.evaluate((body) => body && body.innerHTML, bodyHandle);
         // const html = await page.evaluate((body) => body && body.innerHTML, await page.$("tbody"));
         if (bodyHandle === null) {
-            console.log("!!!! bodyHandle is null, tbody do not exists !!!!");
+            console.log("!!!! bodyHandle is null, ", css, "do not exists !!!!");
             return "";
         }
         await bodyHandle.dispose(); // 销毁
@@ -144,16 +160,17 @@ async function pageAddBoard(
     btree: BinarySearchTree<Board>,
 ): Promise<Board[]> {
     var board2 = new Array<Board>();
+    let count = 0
     try {
-        await gotoPage(url);
         // const frames = page.frames();
         // console.log("frames : ", frames.length, "\n");
         // for (let f of frames) {
         //     console.log("name: ", f.name(), "\n");
         //     const frame = f;
         // }
-        const html = await getTBodyHtml();
+        const html = await getTBodyHtml(url);
         if (html.length === 0) {
+	    console.log(url, " return empty html")
             return board2;
         }
         const $ = cheerio.load(html);
@@ -208,7 +225,7 @@ async function pageAddBoard(
                         console.log("oops");
                 }
             });
-            console.log(board);
+	    count++
             btree.insert(board);
         }
         // var trs: string[] = new Array();
@@ -222,20 +239,23 @@ async function pageAddBoard(
     } catch (err) {
         console.log(err);
     }
+    console.log("this page got 二级目录", board2.length, ",total : ", count);
+    
     return board2;
 }
 
 async function restAddBoard(rest: Board[], btree: BinarySearchTree<Board>) {
     while (rest.length !== 0) {
         var rest2 = new Array<Board>();
-        console.log(rest.length);
+        // console.log(rest.length);
         for (let r of rest) {
             // record tag as parents.
             const t = new Tag(r.cname());
             // const t = new Tag(r.tag, r.cname());
             const url = redirectURL(r.url);
+	    console.log("-- for board ", r.cname(), " goto ", url)
             const r2 = await pageAddBoard(url, t.tag, btree);
-            console.log(r2.length);
+            // console.log(r2.length);
             r2.length > 0 && rest2.concat(r2);
             // assert(rest.length === 0);
         }
@@ -296,8 +316,7 @@ async function getTopicList(board: Board) {
 async function getTopicListFrom(url: string) {
     var topics = new Array<Topic>();
     try {
-        await gotoPage(url);
-        const html = await getTBodyHtml();
+        const html = await getTBodyHtml(url);
         if (html.length === 0) return topics;
 
         const $ = cheerio.load(html);
