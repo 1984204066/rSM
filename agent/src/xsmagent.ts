@@ -1,11 +1,11 @@
-import {newXsm, XSM} from "./sm3w-util.js";
+import { newXsm, XSM } from "./sm3w-util.js";
 import dgram from "node:dgram";
-
+import {Topic} from "./board.js"
 // const server = dgram.createSocket('udp4');
 class udpBroker {
     constructor(
-	public sm:XSM,
-	public bport = 8125,
+        public sm: XSM,
+        public bport = 8125,
         public encoder: TextEncoder = new TextEncoder(),
         public decoder: TextDecoder = new TextDecoder(),
         public server = dgram.createSocket("udp4"),
@@ -38,20 +38,34 @@ class udpBroker {
             // '{"cmd": "login"}'
             switch (jmsg.cmd) {
                 case "login":
-                    const user: string = jmsg.user;
-                    const passwd: string = jmsg.passwd;
-                    await this.sm.iLogin(user, passwd);
+                    await this.sm.iLogin(jmsg.user, jmsg.passwd);
                     break;
                 case "favorateList":
+                    // {"cmd":"favorateList"}
                     let favors = await this.sm.getFavorateList();
                     await this.send_array(favors, client_addr);
                     break;
                 case "allBoardList":
+                    // {"cmd":"allBoardList"}
                     let board_array = await this.sm.getBoardList();
                     await this.send_array(board_array, client_addr);
                     // await initBoardTbl(board_array);
                     break;
-                case "browseBoard":
+                case "topicList":
+                    // {"cmd": "topicList", "board":"NewExpress", "page": 1}
+                    let board = this.sm.searchBoard(jmsg.board);
+                    if (board === null) {
+                        console.log("cannot find board ", jmsg.board);
+                        break;
+                    }
+                    let topics = await this.sm.getTopicList(board);
+                    type Short = { title: string; ctime: string };
+                    let brief = new Array<Short>();
+                    topics.forEach((v: Topic) => {
+                        let one = { title: v.xid, ctime: v.ctime };
+                        brief.push(one);
+                    });
+                    await this.send_array(brief, client_addr);
                     break;
                 case "browseTopic":
                     break;
@@ -100,7 +114,7 @@ class udpBroker {
         this.server.ref();
     }
 }
-let sm0 = await newXsm()
+let sm0 = await newXsm();
 let server = new udpBroker(sm0, 8125);
 server.start();
 server.sm.rest();

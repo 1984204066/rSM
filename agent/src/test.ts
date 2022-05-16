@@ -7,6 +7,9 @@ import path from "path";
 
 console.log(puppeteer.connect);
 
+function x (y: Function) {
+    y()
+}
 const buffer = fs.readFileSync("/home/admin/1.html");
 const content2 = iconv.decode(buffer, "utf8");
 // console.log(buffer);

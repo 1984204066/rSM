@@ -1,5 +1,5 @@
 import puppeteer from "puppeteer";
-import {load, CheerioAPI , BasicAcceptedElems, Node} from "cheerio";
+import { BasicAcceptedElems, CheerioAPI, load, Node } from "cheerio";
 import { Board, compareBoard, RBTree, SectionNames, SectionNo, Tag, Topic } from "./board.js";
 
 function redirectURL(url: string) {
@@ -26,7 +26,7 @@ export async function newXsm() {
     return sm;
 }
 export class XSM {
-    constructor(public page: puppeteer.Page) {
+    constructor(public page: puppeteer.Page, public boards = new Array<Board>()) {
     }
     async iLogin(user: string, passwd: string) {
         // await gotoPage(page, "https://www.mysmth.net/");
@@ -67,7 +67,9 @@ export class XSM {
         return favors;
     }
 
-    async getBoardList() {
+    async getBoardList(force: boolean = false) {
+        if (!force && this.boards.length > 0) return this.boards;
+
         const baseURL = "https://www.mysmth.net/nForum/#!section/";
         var btree = new RBTree<Board>(compareBoard);
 
@@ -87,10 +89,19 @@ export class XSM {
             }
             board_array.push(data);
         });
+        this.boards = board_array;
         console.log("total :", count);
         return board_array;
     }
 
+    searchBoard(name: string) {
+        for (let board of this.boards) {
+            if (board.xid.includes(name)) {
+                return board;
+            }
+        }
+        return null;
+    }
     async pickoutBoard(
         url: string,
         tag: string,
@@ -107,11 +118,12 @@ export class XSM {
                 // console.log("tr", body);
                 var board = new Board();
                 board.addTags(tag);
-                $("td", tr).map((i:number, el) => {
+                $("td", tr).map((i: number, el) => {
                     assembleBoard($, i, el, board);
                 });
-		if (board.kind === 2)
-		    board2.push(board);
+                if (board.kind === 2) {
+                    board2.push(board);
+                }
 
                 count++;
                 btree.insert(board);
@@ -150,8 +162,12 @@ export class XSM {
             rest = rest2;
         }
     }
-    async getTopicList(board: Board) {
-        const url = redirectURL(board.Url());
+    async getTopicList(board: Board, p: number = 1) {
+        let url = redirectURL(board.Url());
+        if (p !== 1) {
+            url = url + "?p=" + p;
+        }
+        // console.log(url)
         return await this.getTopicListFrom(url);
     }
 
@@ -162,40 +178,8 @@ export class XSM {
             const trs = $("tr").toArray();
             for (var tr of trs) {
                 var topic = new Topic();
-                $("td", tr).map((i, el) => {
-                    switch (i) {
-                        case 0:
-                            break;
-                        case 1:
-                            const sub = topic.Subject($("a", el).text());
-                            const href = topic.Url($("a", el).attr("href"));
-                            const samp = $("samp", el).get().length > 0 && ":samp";
-                            topic.addTags(samp || "");
-                            break;
-                        case 2:
-                            topic.CTime($(el).text());
-                            break;
-                        case 3:
-                            topic.author.Name($("a", el).text());
-                            break;
-                        case 4:
-                            topic.Coin(Number($(el).text()));
-                            break;
-                        case 5:
-                            topic.focusNum(Number($(el).text()));
-                            break;
-                        case 6:
-                            topic.replyNum(Number($(el).text()));
-                            break;
-                        case 7:
-                            topic.upTime($(el).text());
-                            break;
-                        case 8:
-                            topic.Modifier($(el).text());
-                            break;
-                        default:
-                            console.log("oops");
-                    }
+                $("td", tr).map((i: number, el) => {
+                    assembleTopic($, i, el, topic);
                 });
                 console.log(topic);
                 topics.push(topic);
@@ -323,6 +307,47 @@ function assembleBoard(
             break;
         case 6:
             board.ndebate = Number($(el).text());
+            break;
+        default:
+            console.log("oops");
+    }
+}
+
+function assembleTopic(
+    $: CheerioAPI,
+    i: number,
+    el: BasicAcceptedElems<Node>,
+    topic: Topic,
+) {
+    switch (i) {
+        case 0:
+            break;
+        case 1:
+            const sub = topic.Subject($("a", el).text());
+            const href = topic.Url($("a", el).attr("href"));
+            const samp = $("samp", el).get().length > 0 && ":samp";
+            topic.addTags(samp || "");
+            break;
+        case 2:
+            topic.CTime($(el).text());
+            break;
+        case 3:
+            topic.author.Name($("a", el).text());
+            break;
+        case 4:
+            topic.Coin(Number($(el).text()));
+            break;
+        case 5:
+            topic.focusNum(Number($(el).text()));
+            break;
+        case 6:
+            topic.replyNum(Number($(el).text()));
+            break;
+        case 7:
+            topic.upTime($(el).text());
+            break;
+        case 8:
+            topic.Modifier($(el).text());
             break;
         default:
             console.log("oops");
