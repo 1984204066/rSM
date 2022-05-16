@@ -97,13 +97,27 @@ class dailyActivityInfo {
         return this.last_page;
     }
 }
+export const SectionNames = [
+    "社区管理",
+    "国内院校",
+    "休闲娱乐",
+    "五湖四海",
+    "游戏运动",
+    "社会信息",
+    "知性感性",
+    "文化人文",
+    "学术科学",
+    "电脑技术",
+    "终止版面",
+];
+export const SectionNo = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A"];
 
 export class Board extends SomeX {
     butchers: string[];
     ntopic: number;
     ndebate: number;
     activity: dailyActivityInfo;
-    topics: BinarySearchTree<Topic>;
+    topics: RBTree<Topic>;
 
     // constructor(xid: string, u: string, k: number);
     // constructor(
@@ -129,7 +143,7 @@ export class Board extends SomeX {
         this.ntopic = tps;
         this.ndebate = arts;
         this.activity = new dailyActivityInfo();
-        this.topics = new BinarySearchTree<Topic>(compareTopic);
+        this.topics = new RBTree<Topic>(compareTopic);
     }
 
     ename(): string {
@@ -303,7 +317,7 @@ export class Topic extends Article {
     reply: number;
     utime: string;
     modifier: string;
-    debates: BinarySearchTree<Article>;
+    debates: RBTree<Article>;
 
     constructor(xid: string = "", u: string = "", k: number = 0) {
         super(xid, u, k);
@@ -312,7 +326,7 @@ export class Topic extends Article {
         this.reply = 0;
         this.utime = "";
         this.modifier = "";
-        this.debates = new BinarySearchTree<Article>(compareArticle);
+        this.debates = new RBTree<Article>(compareArticle);
     }
 
     Coin(coin?: number | null) {
@@ -381,7 +395,7 @@ export function defaultCompare<T>(a: T, b: T): Compare {
     return a < b ? Compare.LESS_THAN : Compare.BIGGER_THAN;
 }
 
-export class BinarySearchTree<T> {
+export class RBTree<T> {
     protected root?: Node<T>;
 
     constructor(protected comparator: ICompareFunction<T> = defaultCompare) {

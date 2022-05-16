@@ -1,5 +1,5 @@
 import { DataTypes, Database, Model, PostgresConnector } from 'https://deno.land/x/denodb/mod.ts';
-// import {BinarySearchTree} from "./board.tsx";
+// import {RBTree} from "./board.tsx";
 
 //https://github.com/eveningkid/denodb#clients
 // https://eveningkid.com/denodb-docs/docs/getting-started

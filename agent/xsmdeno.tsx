@@ -1,7 +1,7 @@
 // @deno-types="https://cdn.jsdelivr.net/gh/justjavac/deno_cheerio/cheerio.d.ts"
 import cheerio from "https://dev.jspm.io/cheerio/index.js";
 import puppeteer from "https://deno.land/x/puppeteer@9.0.2/mod.ts";
-import {Article, BinarySearchTree, Board, compareBoard, Tag, Topic } from "./board.tsx";
+import {Article, RBTree, Board, compareBoard, Tag, Topic } from "./board.tsx";
 //import {initBoardTbl} from "./db.tsx"
 // const puppeteer = require("/usr/lib/node_modules/puppeteer");
 // const cheerio = require("/usr/lib/node_modules/cheerio");
@@ -157,7 +157,7 @@ async function selectHtml(css: string) {
 async function pageAddBoard(
     url: string,
     tag: string,
-    btree: BinarySearchTree<Board>,
+    btree: RBTree<Board>,
 ): Promise<Board[]> {
     var board2 = new Array<Board>();
     let count = 0
@@ -244,7 +244,7 @@ async function pageAddBoard(
     return board2;
 }
 
-async function restAddBoard(rest: Board[], btree: BinarySearchTree<Board>) {
+async function restAddBoard(rest: Board[], btree: RBTree<Board>) {
     while (rest.length !== 0) {
         var rest2 = new Array<Board>();
         // console.log(rest.length);
@@ -279,7 +279,7 @@ async function getBoardList() {
     ];
     const SectionURLs = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A"];
     const baseURL = "https://www.mysmth.net/nForum/#!section/";
-    var btree = new BinarySearchTree<Board>(compareBoard);
+    var btree = new RBTree<Board>(compareBoard);
 
     for (var index in SectionURLs) {
         const url = baseURL + SectionURLs[index];
