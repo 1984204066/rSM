@@ -53,12 +53,7 @@ class udpBroker {
                     break;
                 case "topicList":
                     // {"cmd": "topicList", "board":"NewExpress", "page": 1}
-                    let board = this.sm.searchBoard(jmsg.board);
-                    if (board === null) {
-                        console.log("cannot find board ", jmsg.board);
-                        break;
-                    }
-                    let topics = await this.sm.getTopicList(board);
+                    let topics = await this.sm.getTopicList(jmsg.board);
                     type Short = { title: string; ctime: string };
                     let brief = new Array<Short>();
                     topics.forEach((v: Topic) => {
@@ -77,6 +72,7 @@ class udpBroker {
             console.log(err);
         }
     }
+    
     async send_array<T>(adata: Array<T>, dest: dgram.RemoteInfo | null) {
         if (adata.length > 0) {
             const len = await this.send_data(adata, null);

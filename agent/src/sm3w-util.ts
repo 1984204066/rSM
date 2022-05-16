@@ -1,6 +1,15 @@
 import puppeteer from "puppeteer";
 import { BasicAcceptedElems, CheerioAPI, load, Node } from "cheerio";
-import { Board, compareBoard, RBTree, SectionNames, SectionNo, Tag, Topic } from "./board.js";
+import {
+    Article,
+    Board,
+    compareBoard,
+    RBTree,
+    SectionNames,
+    SectionNo,
+    Tag,
+    Topic,
+} from "./board.js";
 
 function redirectURL(url: string) {
     const smBase = "https://www.mysmth.net";
@@ -102,6 +111,7 @@ export class XSM {
         }
         return null;
     }
+
     async pickoutBoard(
         url: string,
         tag: string,
@@ -162,8 +172,19 @@ export class XSM {
             rest = rest2;
         }
     }
-    async getTopicList(board: Board, p: number = 1) {
-        let url = redirectURL(board.Url());
+
+    async getTopicList(board: Board | string, p: number = 1) {
+	let b: Board | null;
+	if (typeof board === 'string') {
+	    b = this.searchBoard(board);
+	    if (b === null) {
+		console.log("cannot find board ", board);
+		return new Array<Topic>()
+	    }
+	} else {
+	    b = board;
+	}
+        let url = redirectURL(b.Url());
         if (p !== 1) {
             url = url + "?p=" + p;
         }
@@ -189,26 +210,45 @@ export class XSM {
         }
         return topics;
     }
+    async getArticleDebates(subject: Topic) {
+        const url = redirectURL(subject.Url());
+        return await this.getArticleDebatesFrom(url);
+    }
+
+    async getArticleDebatesFrom(url: string) {
+        var arts = new Array<Article>();
+        try {
+            await this.gotoPage(url);
+            let span = await smallCheerio(this.page, "div.b-head.corner");
+            let title = span("span.n-left").text().replace(/^文章主题:/, "").trim();
+            const $ = await smallCheerio(this.page, "div.b-content.corner");
+            const trs = $("tr").toArray();
+            for (var j = 0; j < trs.length; j += 3) {
+                // one article have 3 tr
+                let { debate, no } = oneDebate(title, $, [trs[j], trs[j + 1], trs[j + 2]]);
+                arts[no] = debate;
+                // console.log(`${no}, `, debate);
+            }
+        } catch (err) {
+            console.log(err);
+        }
+        return arts;
+    }
 
     async getTBody(url: string) {
         let retry = 2;
         do {
             try {
                 await this.gotoPage(url);
-                const html = await this.selectHtml("tbody");
-                if (html.length !== 0) {
-                    // must encapsulated with <table>, otherwise $('tr') will be null.
-                    let tbody = "<table>" + html + "</table>";
-                    // console.log(tbody);
-                    const $ = load(tbody);
-                    // section#body has style, and maybe contains special char \8 \9.
-                    $("style").empty();
-                    return $;
-                }
-                console.log(url, " return empty html let us retry");
-                retry--;
+                // must encapsulated with <table>, otherwise $('tr') will be null.
+                const $ = await smallCheerio(
+                    this.page,
+                    "tbody",
+                    (html: string) => "<table>" + html + "</table>",
+                );
+                return $;
             } catch (err) {
-                console.log(err);
+                console.log(`${url} return empty html (${err}) let us retry!`);
                 retry--;
             }
         } while (retry > 0);
@@ -227,33 +267,117 @@ export class XSM {
         console.log(`hi~~, I'm going to page ${url}`);
     }
 
-    async selectHtml(css: string) {
-        try {
-            // const bodyHandle = await frame.$("html");
-            // const corner = await page.click("#body.corner");
-            // const bodyHandle = await page.$("#body.corner");
-            // const html = await page.$eval('html', body => body.innerHTML)
-            const bodyHandle = await this.page.$(css);
-            const html = await this.page.evaluate((body) => body && body.innerHTML, bodyHandle);
-            // const html = await page.evaluate((body) => body && body.innerHTML, await page.$("tbody"));
-            if (bodyHandle === null) {
-                console.log("!!!! bodyHandle is null, ", css, "do not exists !!!!");
-                return "";
-            }
-            await bodyHandle.dispose(); // 销毁
-            return html;
-        } catch (err) {
-            console.log(err);
-        }
-        return "";
-    }
-
     async rest() {
         await this.page.waitForTimeout(8000);
         await this.page.waitForNavigation({ timeout: 0 });
         await this.page.screenshot({ path: "example.png" });
         // await browser.close();
     }
+}
+
+async function boardInfoAt(page: puppeteer.Page) {
+    var bi = new Board();
+    // 主题数:142405
+    const total = await page.$eval("ul.pagination li.page-pre i", (i) => i.textContent);
+    bi.totalTopic(Number(total));
+    // 分页: 12345678...4747 >>
+    const li = await smallCheerio(page, "ul.pagination li ol.page-main");
+    const last_page = li("li").last().prev().text();
+    bi.activity.lastPage(Number(last_page));
+    console.log(`${total}, pages: ${last_page}`);
+
+    // '本版当前共有162人在线[最高10608人] 今日帖数193 版面积分:91727'
+    const span = await smallCheerio(page, "div.b-head.corner");
+    const info = span("span.n-left").text();
+    var dig: number[] = [];
+    const re = /[^\d]+(\d+)[^\d]+(\d+)[^\d]+(\d+)[^\d]+(\d+)/g;
+    const m = re.exec(info);
+    if (m) {
+        // i = 0 对于 $0代表整个str, 不是number. 故此dig[0] = NaN
+        m.forEach((v, i) => dig.push(Number(v)));
+        bi.activity.onlinesPeople(dig[1]);
+        bi.activity.todaysPeak(dig[2]);
+        bi.activity.todaysAriticle(dig[3]);
+        let gross = dig[4];
+    }
+    console.log(info, dig, bi);
+    return bi;
+}
+
+type fixHtml = (html: string) => string;
+
+async function smallCheerio(page: puppeteer.Page, label: string, fix?: fixHtml) {
+    let html = await selectHtml(page, label);
+
+    if (html.length === 0) {
+        throw ("empty html piece");
+    }
+    if (fix !== undefined) {
+        html = fix(html);
+    }
+    const $ = load(html);
+    // section#body has style, and maybe contains special char \8 \9.
+    $("style").empty();
+    return $;
+}
+
+async function selectHtml(page: puppeteer.Page, css: string) {
+    try {
+        // const bodyHandle = await frame.$("html");
+        // const corner = await page.click("#body.corner");
+        // const bodyHandle = await page.$("#body.corner");
+        // const html = await page.$eval('html', body => body.innerHTML)
+        const bodyHandle = await page.$(css);
+        const html = await page.evaluate((body) => body && body.innerHTML, bodyHandle);
+        // const html = await page.evaluate((body) => body && body.innerHTML, await page.$("tbody"));
+        if (bodyHandle === null) {
+            console.log("!!!! bodyHandle is null, ", css, "do not exists !!!!");
+            return "";
+        }
+        await bodyHandle.dispose(); // 销毁
+        return html;
+    } catch (err) {
+        console.log(err);
+    }
+    return "";
+}
+
+function oneDebate(title: string, $: CheerioAPI, trs: BasicAcceptedElems<Node>[]) {
+    var art = new Article();
+    let seq = 0;
+    let [tr1, tr2, tr3] = [...trs];
+    // config author
+    art.author.Name($("span.a-u-name", tr1).text());
+    const pos = $("span.a-pos", tr1).text();
+    // console.log(pos);
+    if (pos !== "楼主") {
+        const re = /第(\d+)楼/g;
+        seq = Number(pos.replace(re, "$1"));
+    } else {
+        art.Subject(title);
+    }
+    art.author.Url($("div.a-u-img img", tr2).attr("src"));
+    art.author.nickName($("div.a-u-uid", tr2).text());
+    let info = $("dl.a-u-info", tr2);
+    let key = $("dt", info).map((i, el) => $(el).text().trim());
+    let value = $("dd", info).map((i, el) => $(el).text().trim());
+    let imap = new Map();
+    for (let i in key) {
+        imap.set(key[i], value[i]);
+    }
+    let author = art.author;
+    // const x = $("dd", info).eq(0).text(); // 身份： 用户
+    author.publish = Number(imap.get("文章"));
+    author.stellar = imap.get("星座");
+    author.score = Number(imap.get("积分"));
+    author.addTags(":" + imap.get("等级"));
+    let raw_html = $("td.a-content p", tr2).html();
+    let parts = raw_html && raw_html.split("<br>", -1);
+    if (parts) {
+        let texts = parts.map((data) => load(data).root().text());
+        art.content.parse(texts);
+    }
+    return { debate: art, no: seq };
 }
 
 async function clickBecomeVisible(page: puppeteer.Page, css1: string, css2: string) {
